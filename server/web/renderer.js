@@ -241,10 +241,10 @@ function svgClose(name) {
 function svgGcStroke(gc) {
     if (!gc || gc.col == null) return ' stroke="none"';
     var s = ' stroke="' + svgEsc(gc.col) + '"';
-    s += ' stroke-width="' + (gc.lwd || 1) + '"';
+    s += ' stroke-width="' + (+gc.lwd || 1) + '"';
     s += ' stroke-linecap="' + svgEsc(gc.lend || 'round') + '"';
     s += ' stroke-linejoin="' + svgEsc(gc.ljoin || 'round') + '"';
-    if (gc.lty && gc.lty.length > 0) s += ' stroke-dasharray="' + gc.lty.join(',') + '"';
+    if (gc.lty && gc.lty.length > 0) s += ' stroke-dasharray="' + gc.lty.map(function(v) { return +v || 0; }).join(',') + '"';
     return s;
 }
 
@@ -255,7 +255,7 @@ function svgGcFill(gc) {
 
 function svgFont(gc) {
     if (!gc || !gc.font) return { size: 12, family: 'sans-serif', style: '', weight: '' };
-    var size = gc.font.size || 12;
+    var size = +gc.font.size || 12;
     var family = mapFontFamily(gc.font.family);
     var face = gc.font.face || 1;
     return {
