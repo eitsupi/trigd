@@ -1,5 +1,4 @@
-// renderer.js — Pure rendering functions for trigd plot display.
-// Extracted from vscode-ext/src/webview-provider.ts (getRendererScript).
+// renderer.js — Canvas2D rendering functions for trigd plot display.
 // All functions are global so app.js can call them.
 
 function mapFontFamily(family) {

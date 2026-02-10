@@ -18,5 +18,5 @@ Invisible \code{NULL}. The device is opened as a side effect.
 }
 \description{
 Opens a graphics device that streams plot operations as JSON to an external
-renderer (e.g. a VS Code extension) over a Unix domain socket.
+renderer (e.g. a browser client) over a Unix domain socket.
 }

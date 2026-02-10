@@ -6,8 +6,7 @@ Authors@R: person("Grant", "McDermott", role = c("aut", "cre"),
 Description: A graphics device that records R plotting operations and streams
     them as JSON over a Unix domain socket to an external renderer. The device
     acts as a pure recorder with no rendering dependencies -- all rendering
-    occurs in the client (e.g. a VS Code webview or any NDJSON-capable
-    frontend).
+    occurs in the client (e.g. a browser or any NDJSON-capable frontend).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -16,5 +15,5 @@ NeedsCompilation: yes
 Suggests: later
 SystemRequirements: POSIX sockets (available on macOS, Linux; Windows support
     planned)
-URL: https://github.com/grantmcdermott/jgd
-BugReports: https://github.com/grantmcdermott/jgd/issues
+URL: https://github.com/eitsupi/trigd
+BugReports: https://github.com/eitsupi/trigd/issues

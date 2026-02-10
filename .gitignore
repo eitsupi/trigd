@@ -15,10 +15,6 @@ r-pkg/src/*.d
 r-pkg/src/symbols.rds
 r-pkg/*.Rcheck
 
-# VS Code extension
-vscode-ext/node_modules/
-vscode-ext/out/
-
 # OS
 .DS_Store
 Thumbs.db

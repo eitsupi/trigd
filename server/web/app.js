@@ -1,5 +1,5 @@
 // app.js — WebSocket client, PlotHistory, message routing, toolbar, resize, metrics, export.
-// Ported from vscode-ext/src/plot-history.ts and webview-provider.ts for standalone browser use.
+// Plot history, message routing, toolbar, resize, metrics, and export for the browser frontend.
 
 (function() {
     'use strict';
