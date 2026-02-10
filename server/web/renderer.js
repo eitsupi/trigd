@@ -242,8 +242,8 @@ function svgGcStroke(gc) {
     if (!gc || gc.col == null) return ' stroke="none"';
     var s = ' stroke="' + svgEsc(gc.col) + '"';
     s += ' stroke-width="' + (gc.lwd || 1) + '"';
-    s += ' stroke-linecap="' + (gc.lend || 'round') + '"';
-    s += ' stroke-linejoin="' + (gc.ljoin || 'round') + '"';
+    s += ' stroke-linecap="' + svgEsc(gc.lend || 'round') + '"';
+    s += ' stroke-linejoin="' + svgEsc(gc.ljoin || 'round') + '"';
     if (gc.lty && gc.lty.length > 0) s += ' stroke-dasharray="' + gc.lty.join(',') + '"';
     return s;
 }
@@ -340,7 +340,7 @@ function plotToSvg(plot, exportW, exportH) {
                 var col = (op.gc && op.gc.col != null) ? svgEsc(op.gc.col) : 'black';
                 var transform = 'translate(' + op.x + ',' + op.y + ')';
                 if (op.rot) transform += ' rotate(' + (-op.rot) + ')';
-                s += svgTag('text', ' transform="' + transform + '" font-family="' + svgEsc(f.family) + '" font-size="' + f.size + '" font-weight="' + f.weight + '" font-style="' + f.style + '" text-anchor="' + anchor + '" fill="' + col + '"') + svgEsc(op.str) + svgClose('text') + '\n';
+                s += svgTag('text', ' transform="' + transform + '" font-family="' + svgEsc(f.family) + '" font-size="' + f.size + '" font-weight="' + svgEsc(f.weight) + '" font-style="' + svgEsc(f.style) + '" text-anchor="' + anchor + '" fill="' + col + '"') + svgEsc(op.str) + svgClose('text') + '\n';
                 break;
             }
             case 'raster': {
@@ -352,7 +352,8 @@ function plotToSvg(plot, exportW, exportH) {
                     var cx = dx + aw / 2, cy = dy + ah / 2;
                     transform = ' transform="rotate(' + (-op.rot) + ',' + cx + ',' + cy + ')"';
                 }
-                s += svgTag('image', ' x="' + dx + '" y="' + dy + '" width="' + aw + '" height="' + ah + '" href="' + svgEsc(op.data) + '"' + transform, true) + '\n';
+                var safeHref = /^data:image\//.test(op.data) ? op.data : svgEsc(op.data);
+                s += svgTag('image', ' x="' + dx + '" y="' + dy + '" width="' + aw + '" height="' + ah + '" href="' + safeHref + '"' + transform, true) + '\n';
                 break;
             }
         }
