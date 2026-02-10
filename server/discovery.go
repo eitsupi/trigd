@@ -18,7 +18,11 @@ func writeDiscovery(socketPath string, httpPort int) []string {
 		HTTPPort   int    `json:"httpPort"`
 		PID        int    `json:"pid"`
 	}{socketPath, httpPort, os.Getpid()}
-	content, _ := json.Marshal(disc)
+	content, err := json.Marshal(disc)
+	if err != nil {
+		log.Printf("error: failed to marshal discovery: %v", err)
+		return nil
+	}
 
 	var written []string
 	locations := discoveryLocations()

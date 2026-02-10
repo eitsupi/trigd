@@ -23,7 +23,7 @@ type Hub struct {
 }
 
 func NewHub() *Hub {
-	return &Hub{
+	h := &Hub{
 		sessions:         make(map[string]*RSession),
 		clients:          make(map[*BrowserClient]bool),
 		registerClient:   make(chan *BrowserClient),
@@ -31,11 +31,12 @@ func NewHub() *Hub {
 		broadcastFrame:   make(chan []byte, 256),
 		done:             make(chan struct{}),
 	}
+	h.runWg.Add(1) // Must be done before go hub.Run()
+	return h
 }
 
-// Run is the main event loop. It must be called in its own goroutine.
+// Run is the main event loop. Call hub.PrepareRun() before launching this in a goroutine.
 func (h *Hub) Run() {
-	h.runWg.Add(1)
 	defer h.runWg.Done()
 	for {
 		select {

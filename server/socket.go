@@ -2,9 +2,9 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -124,25 +124,17 @@ func handleRConnection(hub *Hub, conn net.Conn) {
 	}
 }
 
-// extractSessionID tries to find "sessionId":"..." in the message.
+// extractSessionID extracts the plot.sessionId from a message.
 func extractSessionID(data []byte) string {
-	// Simple extraction without full JSON parse
-	needle := []byte(`"sessionId":"`)
-	idx := bytes.Index(data, needle)
-	if idx < 0 {
-		needle = []byte(`"sessionId": "`)
-		idx = bytes.Index(data, needle)
-		if idx < 0 {
-			return ""
-		}
+	var msg struct {
+		Plot struct {
+			SessionID string `json:"sessionId"`
+		} `json:"plot"`
 	}
-	start := idx + len(needle)
-	for end := start; end < len(data); end++ {
-		if data[end] == '"' {
-			return string(data[start:end])
-		}
+	if json.Unmarshal(data, &msg) != nil {
+		return ""
 	}
-	return ""
+	return msg.Plot.SessionID
 }
 
 // createSocketListener creates a Unix domain socket or TCP listener for R connections.
