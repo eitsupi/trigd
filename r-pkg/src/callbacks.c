@@ -11,14 +11,14 @@
 #include <string.h>
 #include <stdlib.h>
 
-static void check_incoming(jgd_state_t *st, pDevDesc dd);
-static void apply_pending_resize(jgd_state_t *st, pDevDesc dd);
+static void check_incoming(trigd_state_t *st, pDevDesc dd);
+static void apply_pending_resize(trigd_state_t *st, pDevDesc dd);
 
-static jgd_state_t *get_state(pDevDesc dd) {
-    return (jgd_state_t *)dd->deviceSpecific;
+static trigd_state_t *get_state(pDevDesc dd) {
+    return (trigd_state_t *)dd->deviceSpecific;
 }
 
-static void flush_frame(jgd_state_t *st, int incremental) {
+static void flush_frame(trigd_state_t *st, int incremental) {
     page_serialize_frame(&st->page, st->session_id, &st->frame_buf, incremental);
     transport_send(&st->transport, jw_result(&st->frame_buf), jw_length(&st->frame_buf));
 }
@@ -29,7 +29,7 @@ static void cb_activate(const pDevDesc dd) { (void)dd; }
 static void cb_deactivate(const pDevDesc dd) { (void)dd; }
 
 static void cb_newPage(const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
 
     if (st->page_count > 0 && st->page.op_count > 0 && !st->replaying) {
         flush_frame(st, 0);
@@ -50,7 +50,7 @@ static void cb_newPage(const pGEcontext gc, pDevDesc dd) {
 }
 
 static void cb_close(pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
 
     if (st->page.op_count > st->last_flushed_ops) {
         flush_frame(st, 0);
@@ -68,7 +68,7 @@ static void cb_close(pDevDesc dd) {
 }
 
 static void cb_clip(double x0, double x1, double y0, double y1, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -88,7 +88,7 @@ static void cb_clip(double x0, double x1, double y0, double y1, pDevDesc dd) {
 
 static void cb_line(double x1, double y1, double x2, double y2,
                     const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -104,7 +104,7 @@ static void cb_line(double x1, double y1, double x2, double y2,
 
 static void cb_polyline(int n, double *x, double *y,
                         const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -118,7 +118,7 @@ static void cb_polyline(int n, double *x, double *y,
 
 static void cb_polygon(int n, double *x, double *y,
                        const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -132,7 +132,7 @@ static void cb_polygon(int n, double *x, double *y,
 
 static void cb_rect(double x0, double y0, double x1, double y1,
                     const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -148,7 +148,7 @@ static void cb_rect(double x0, double y0, double x1, double y1,
 
 static void cb_circle(double x, double y, double r,
                       const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -164,7 +164,7 @@ static void cb_circle(double x, double y, double r,
 static void cb_text(double x, double y, const char *str,
                     double rot, double hadj,
                     const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -247,7 +247,7 @@ static void mcache_store(unsigned int hash, double v1, double v2, double v3) {
 }
 
 /* Read a metrics response, stashing any resize messages that arrive first */
-static int recv_metrics_response(jgd_state_t *st, char *buf, size_t bufsize) {
+static int recv_metrics_response(trigd_state_t *st, char *buf, size_t bufsize) {
     for (int attempts = 0; attempts < 5; attempts++) {
         int n = transport_recv_line(&st->transport, buf, bufsize, 500);
         if (n <= 0) return -1;
@@ -271,7 +271,7 @@ static int recv_metrics_response(jgd_state_t *st, char *buf, size_t bufsize) {
 }
 
 static double cb_strWidth(const char *str, const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     if (!st->transport.connected)
         return metrics_str_width(str, gc, st->dpi);
 
@@ -308,7 +308,7 @@ static double cb_strWidth(const char *str, const pGEcontext gc, pDevDesc dd) {
 static void cb_metricInfo(int c, const pGEcontext gc,
                           double *ascent, double *descent, double *width,
                           pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     if (!st->transport.connected) {
         metrics_char_info(c, gc, st->dpi, ascent, descent, width);
         return;
@@ -359,7 +359,7 @@ static void cb_metricInfo(int c, const pGEcontext gc,
     }
 }
 
-static void check_incoming(jgd_state_t *st, pDevDesc dd) {
+static void check_incoming(trigd_state_t *st, pDevDesc dd) {
     while (transport_has_data(&st->transport)) {
         char buf[1024];
         int n = transport_recv_line(&st->transport, buf, sizeof(buf), 0);
@@ -381,7 +381,7 @@ static void check_incoming(jgd_state_t *st, pDevDesc dd) {
     }
 }
 
-static void apply_pending_resize(jgd_state_t *st, pDevDesc dd) {
+static void apply_pending_resize(trigd_state_t *st, pDevDesc dd) {
     if (st->pending_w > 0 && st->pending_h > 0) {
         st->width = st->pending_w / st->dpi;
         st->height = st->pending_h / st->dpi;
@@ -395,7 +395,7 @@ static void apply_pending_resize(jgd_state_t *st, pDevDesc dd) {
 }
 
 static void cb_mode(int mode, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     if (mode == 1) {
         st->drawing = 1;
     } else if (mode == 0) {
@@ -409,7 +409,7 @@ static void cb_mode(int mode, pDevDesc dd) {
 
 static void cb_size(double *left, double *right, double *bottom, double *top,
                     pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     *left = 0.0;
     *right = st->width * st->dpi;
     *bottom = st->height * st->dpi;
@@ -418,7 +418,7 @@ static void cb_size(double *left, double *right, double *bottom, double *top,
 
 static void cb_path(double *x, double *y, int npoly, int *nper,
                     Rboolean winding, const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *w = page_writer(&st->page);
 
     jw_obj_start(w);
@@ -450,7 +450,7 @@ static void cb_raster(unsigned int *raster, int w, int h,
                       double x, double y, double width, double height,
                       double rot, Rboolean interpolate,
                       const pGEcontext gc, pDevDesc dd) {
-    jgd_state_t *st = get_state(dd);
+    trigd_state_t *st = get_state(dd);
     json_writer_t *jw = page_writer(&st->page);
 
     size_t npix = (size_t)w * (size_t)h;
@@ -526,7 +526,7 @@ static void cb_glyph(int n, int *glyphs, double *x, double *y,
                      SEXP font, double size, int colour, double rot, pDevDesc dd) { }
 #endif
 
-void jgd_set_callbacks(pDevDesc dd) {
+void trigd_set_callbacks(pDevDesc dd) {
     dd->activate = cb_activate;
     dd->deactivate = cb_deactivate;
     dd->newPage = cb_newPage;

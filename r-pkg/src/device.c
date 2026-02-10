@@ -12,8 +12,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-/* Called from R: .Call(C_jgd, width, height, dpi) */
-SEXP C_jgd(SEXP s_width, SEXP s_height, SEXP s_dpi) {
+/* Called from R: .Call(C_trigd, width, height, dpi) */
+SEXP C_trigd(SEXP s_width, SEXP s_height, SEXP s_dpi) {
     double width = Rf_asReal(s_width);
     double height = Rf_asReal(s_height);
     double dpi = Rf_asReal(s_dpi);
@@ -25,8 +25,8 @@ SEXP C_jgd(SEXP s_width, SEXP s_height, SEXP s_dpi) {
     R_GE_checkVersionOrDie(R_GE_version);
     R_CheckDeviceAvailable();
 
-    jgd_state_t *st = (jgd_state_t *)calloc(1, sizeof(jgd_state_t));
-    if (!st) Rf_error("jgd: failed to allocate device state");
+    trigd_state_t *st = (trigd_state_t *)calloc(1, sizeof(trigd_state_t));
+    if (!st) Rf_error("trigd: failed to allocate device state");
 
     st->width = width;
     st->height = height;
@@ -40,14 +40,14 @@ SEXP C_jgd(SEXP s_width, SEXP s_height, SEXP s_dpi) {
     page_init(&st->page, width * dpi, height * dpi, dpi, R_RGB(255, 255, 255));
 
     if (transport_connect(&st->transport) != 0) {
-        Rf_warning("jgd: could not connect to renderer. "
+        Rf_warning("trigd: could not connect to renderer. "
                    "Plots will be recorded but not displayed until connection is established.");
     }
 
     pDevDesc dd = (pDevDesc)calloc(1, sizeof(DevDesc));
     if (!dd) {
         free(st);
-        Rf_error("jgd: failed to allocate DevDesc");
+        Rf_error("trigd: failed to allocate DevDesc");
     }
 
     double w_px = width * dpi;
@@ -112,10 +112,10 @@ SEXP C_jgd(SEXP s_width, SEXP s_height, SEXP s_dpi) {
     dd->deviceClip = FALSE;
 #endif
 
-    jgd_set_callbacks(dd);
+    trigd_set_callbacks(dd);
 
     pGEDevDesc gdd = GEcreateDevDesc(dd);
-    GEaddDevice2(gdd, "jgd");
+    GEaddDevice2(gdd, "trigd");
     GEinitDisplayList(gdd);
 
     return R_NilValue;
@@ -123,12 +123,12 @@ SEXP C_jgd(SEXP s_width, SEXP s_height, SEXP s_dpi) {
 
 /* Called from R task callback: check for pending resize and replay if needed.
    Returns TRUE if a resize was applied, FALSE otherwise. */
-SEXP C_jgd_poll_resize(void) {
+SEXP C_trigd_poll_resize(void) {
     pGEDevDesc gdd = GEcurrentDevice();
     if (!gdd || !gdd->dev) return Rf_ScalarLogical(FALSE);
 
     pDevDesc dd = gdd->dev;
-    jgd_state_t *st = (jgd_state_t *)dd->deviceSpecific;
+    trigd_state_t *st = (trigd_state_t *)dd->deviceSpecific;
     if (!st || st->replaying) return Rf_ScalarLogical(FALSE);
 
     /* Check socket for incoming resize messages */

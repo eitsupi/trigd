@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-void page_init(jgd_page_t *p, double width, double height, double dpi, int bg) {
+void page_init(trigd_page_t *p, double width, double height, double dpi, int bg) {
     jw_init(&p->jw);
     jw_arr_start(&p->jw);
     p->op_count = 0;
@@ -14,11 +14,11 @@ void page_init(jgd_page_t *p, double width, double height, double dpi, int bg) {
     p->finalized = 0;
 }
 
-void page_free(jgd_page_t *p) {
+void page_free(trigd_page_t *p) {
     jw_free(&p->jw);
 }
 
-json_writer_t *page_writer(jgd_page_t *p) {
+json_writer_t *page_writer(trigd_page_t *p) {
     return &p->jw;
 }
 
@@ -76,7 +76,7 @@ void gc_write_json(json_writer_t *w, const pGEcontext gc) {
     jw_obj_end(w);
 }
 
-void page_serialize_frame(jgd_page_t *p, const char *session_id, json_writer_t *out, int incremental) {
+void page_serialize_frame(trigd_page_t *p, const char *session_id, json_writer_t *out, int incremental) {
     int was_comma = p->jw.needs_comma;
 
     jw_arr_end(&p->jw);

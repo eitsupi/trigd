@@ -48,21 +48,21 @@ static int tcp_port(const char *path) {
     return atoi(path + 4);
 }
 
-void transport_init(jgd_transport_t *t) {
+void transport_init(trigd_transport_t *t) {
     t->fd = (int)SOCK_INVALID;
     t->socket_path[0] = '\0';
     t->connected = 0;
 }
 
 static int discover_socket_path(char *out, size_t outsize, int skip_env) {
-    /* 1. Environment variable (JGD_SOCKET for Unix path, JGD_PORT for TCP) */
+    /* 1. Environment variable (TRIGD_SOCKET for Unix path, TRIGD_PORT for TCP) */
     if (!skip_env) {
-        const char *port_env = getenv("JGD_PORT");
+        const char *port_env = getenv("TRIGD_PORT");
         if (port_env && port_env[0]) {
             snprintf(out, outsize, "tcp:%s", port_env);
             return 0;
         }
-        const char *env = getenv("JGD_SOCKET");
+        const char *env = getenv("TRIGD_SOCKET");
         if (env && env[0]) {
             snprintf(out, outsize, "%s", env);
             return 0;
@@ -70,7 +70,7 @@ static int discover_socket_path(char *out, size_t outsize, int skip_env) {
     }
 
     /* 2. R option */
-    SEXP opt = Rf_GetOption1(Rf_install("jgd.socket"));
+    SEXP opt = Rf_GetOption1(Rf_install("trigd.socket"));
     if (opt != R_NilValue && TYPEOF(opt) == STRSXP && LENGTH(opt) > 0) {
         const char *s = CHAR(STRING_ELT(opt, 0));
         if (s && s[0]) {
@@ -94,7 +94,7 @@ static int discover_socket_path(char *out, size_t outsize, int skip_env) {
     for (int t = 0; tmpdirs[t]; t++) {
         if (!tmpdirs[t] || !tmpdirs[t][0]) continue;
         char discovery[1024];
-        snprintf(discovery, sizeof(discovery), "%s/jgd-discovery.json", tmpdirs[t]);
+        snprintf(discovery, sizeof(discovery), "%s/trigd-discovery.json", tmpdirs[t]);
 
         FILE *f = fopen(discovery, "r");
         if (!f) continue;
@@ -127,7 +127,7 @@ static int discover_socket_path(char *out, size_t outsize, int skip_env) {
     return -1;
 }
 
-static int try_connect(jgd_transport_t *t) {
+static int try_connect(trigd_transport_t *t) {
     ensure_wsa();
 
     if (is_tcp(t->socket_path)) {
@@ -178,12 +178,12 @@ static int try_connect(jgd_transport_t *t) {
 #endif
 }
 
-int transport_connect(jgd_transport_t *t) {
+int transport_connect(trigd_transport_t *t) {
     if (t->connected) return 0;
 
     if (t->socket_path[0] == '\0') {
         if (discover_socket_path(t->socket_path, sizeof(t->socket_path), 0) != 0) {
-            REprintf("jgd: cannot find socket path. Set JGD_SOCKET or start the VS Code extension.\n");
+            REprintf("trigd: cannot find socket path. Set TRIGD_SOCKET or start the VS Code extension.\n");
             return -1;
         }
     }
@@ -198,11 +198,11 @@ int transport_connect(jgd_transport_t *t) {
         if (try_connect(t) == 0) return 0;
     }
 
-    REprintf("jgd: connect(%s) failed: %d\n", t->socket_path, SOCK_ERR);
+    REprintf("trigd: connect(%s) failed: %d\n", t->socket_path, SOCK_ERR);
     return -1;
 }
 
-int transport_send(jgd_transport_t *t, const char *data, size_t len) {
+int transport_send(trigd_transport_t *t, const char *data, size_t len) {
     if (!t->connected) return -1;
 
     sock_t s = (sock_t)t->fd;
@@ -223,7 +223,7 @@ int transport_send(jgd_transport_t *t, const char *data, size_t len) {
     return 0;
 }
 
-int transport_has_data(jgd_transport_t *t) {
+int transport_has_data(trigd_transport_t *t) {
     if (!t->connected) return 0;
     sock_t s = (sock_t)t->fd;
 #ifndef _WIN32
@@ -240,7 +240,7 @@ int transport_has_data(jgd_transport_t *t) {
 #endif
 }
 
-int transport_recv_line(jgd_transport_t *t, char *buf, size_t bufsize, int timeout_ms) {
+int transport_recv_line(trigd_transport_t *t, char *buf, size_t bufsize, int timeout_ms) {
     if (!t->connected) return -1;
 
     sock_t s = (sock_t)t->fd;
@@ -274,7 +274,7 @@ int transport_recv_line(jgd_transport_t *t, char *buf, size_t bufsize, int timeo
     return (int)pos;
 }
 
-void transport_close(jgd_transport_t *t) {
+void transport_close(trigd_transport_t *t) {
     if (t->fd != (int)SOCK_INVALID) {
         SOCK_CLOSE((sock_t)t->fd);
         t->fd = (int)SOCK_INVALID;
@@ -282,7 +282,7 @@ void transport_close(jgd_transport_t *t) {
     t->connected = 0;
 }
 
-int transport_reconnect(jgd_transport_t *t) {
+int transport_reconnect(trigd_transport_t *t) {
     transport_close(t);
     t->socket_path[0] = '\0';
     for (int attempt = 0; attempt < 3; attempt++) {

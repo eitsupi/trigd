@@ -1,5 +1,5 @@
-#ifndef VSCGD_JSON_WRITER_H
-#define VSCGD_JSON_WRITER_H
+#ifndef TRIGD_JSON_WRITER_H
+#define TRIGD_JSON_WRITER_H
 
 #include <stddef.h>
 

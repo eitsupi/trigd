@@ -1,5 +1,5 @@
-#ifndef JGD_COLOR_H
-#define JGD_COLOR_H
+#ifndef TRIGD_COLOR_H
+#define TRIGD_COLOR_H
 
 #include "json_writer.h"
 #include <R.h>

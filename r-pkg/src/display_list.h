@@ -1,5 +1,5 @@
-#ifndef JGD_DISPLAY_LIST_H
-#define JGD_DISPLAY_LIST_H
+#ifndef TRIGD_DISPLAY_LIST_H
+#define TRIGD_DISPLAY_LIST_H
 
 #include "json_writer.h"
 #include <R.h>
@@ -14,12 +14,12 @@ typedef struct {
     double dpi;
     int bg;
     int finalized;
-} jgd_page_t;
+} trigd_page_t;
 
-void page_init(jgd_page_t *p, double width, double height, double dpi, int bg);
-void page_free(jgd_page_t *p);
-json_writer_t *page_writer(jgd_page_t *p);
-void page_serialize_frame(jgd_page_t *p, const char *session_id, json_writer_t *out, int incremental);
+void page_init(trigd_page_t *p, double width, double height, double dpi, int bg);
+void page_free(trigd_page_t *p);
+json_writer_t *page_writer(trigd_page_t *p);
+void page_serialize_frame(trigd_page_t *p, const char *session_id, json_writer_t *out, int incremental);
 void gc_write_json(json_writer_t *w, const pGEcontext gc);
 void lty_write_json(json_writer_t *w, int lty, double lwd);
 

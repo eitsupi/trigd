@@ -1,5 +1,5 @@
-Package: jgd
-Title: JSON Graphics Device
+Package: trigd
+Title: Trigger Graphics Device
 Version: 0.0.1
 Authors@R: person("Grant", "McDermott", role = c("aut", "cre"),
     email = "contact@grantmcdermott.com")

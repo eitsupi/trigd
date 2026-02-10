@@ -1,5 +1,5 @@
-#ifndef JGD_PNG_ENCODER_H
-#define JGD_PNG_ENCODER_H
+#ifndef TRIGD_PNG_ENCODER_H
+#define TRIGD_PNG_ENCODER_H
 
 #include <stddef.h>
 

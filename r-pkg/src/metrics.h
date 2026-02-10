@@ -1,5 +1,5 @@
-#ifndef JGD_METRICS_H
-#define JGD_METRICS_H
+#ifndef TRIGD_METRICS_H
+#define TRIGD_METRICS_H
 
 #include <R.h>
 #include <Rinternals.h>

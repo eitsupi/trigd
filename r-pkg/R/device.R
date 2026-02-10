@@ -8,23 +8,23 @@
 #' @param dpi Resolution in dots per inch (default 96).
 #' @return Invisible `NULL`. The device is opened as a side effect.
 #' @export
-jgd = function(width = 8, height = 6, dpi = 96) {
-  .Call(C_jgd, as.double(width), as.double(height), as.double(dpi))
+trigd = function(width = 8, height = 6, dpi = 96) {
+  .Call(C_trigd, as.double(width), as.double(height), as.double(dpi))
 
   if (requireNamespace("later", quietly = TRUE)) {
     poll = function() {
-      tryCatch(.Call(C_jgd_poll_resize), error = function(e) NULL)
+      tryCatch(.Call(C_trigd_poll_resize), error = function(e) NULL)
       later::later(poll, 0.2)
     }
     later::later(poll, 0.2)
   } else {
-    addTaskCallback(jgd_resize_callback, name = "jgd_resize")
+    addTaskCallback(trigd_resize_callback, name = "trigd_resize")
   }
 
   invisible()
 }
 
-jgd_resize_callback = function(...) {
-  tryCatch(.Call(C_jgd_poll_resize), error = function(e) NULL)
+trigd_resize_callback = function(...) {
+  tryCatch(.Call(C_trigd_poll_resize), error = function(e) NULL)
   TRUE
 }
