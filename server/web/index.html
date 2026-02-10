@@ -4,67 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>trigd</title>
-<style>
-  body { font-family: system-ui, sans-serif; margin: 2rem; background: #1a1a1a; color: #e0e0e0; }
-  #status { padding: 0.5rem 1rem; border-radius: 4px; display: inline-block; margin-bottom: 1rem; }
-  .connected { background: #1b4332; color: #95d5b2; }
-  .disconnected { background: #462020; color: #f5a0a0; }
-  #log { font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; max-height: 80vh;
-         overflow-y: auto; background: #111; padding: 1rem; border-radius: 4px; }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>trigd</h1>
-<div id="status" class="disconnected">Disconnected</div>
-<div id="log"></div>
-<script>
-(function() {
-  const statusEl = document.getElementById('status');
-  const logEl = document.getElementById('log');
-  let ws;
-  let messageCount = 0;
-
-  function appendLog(text) {
-    const line = document.createElement('div');
-    line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
-    logEl.appendChild(line);
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-
-  function connect() {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${proto}//${location.host}/ws`);
-
-    ws.onopen = function() {
-      statusEl.textContent = 'Connected';
-      statusEl.className = 'connected';
-      appendLog('WebSocket connected');
-    };
-
-    ws.onclose = function() {
-      statusEl.textContent = 'Disconnected';
-      statusEl.className = 'disconnected';
-      appendLog('WebSocket disconnected, reconnecting in 2s...');
-      setTimeout(connect, 2000);
-    };
-
-    ws.onerror = function(e) {
-      appendLog('WebSocket error');
-    };
-
-    ws.onmessage = function(e) {
-      messageCount++;
-      try {
-        const msg = JSON.parse(e.data);
-        appendLog(`#${messageCount} type=${msg.type || 'unknown'} (${e.data.length} bytes)`);
-      } catch {
-        appendLog(`#${messageCount} (${e.data.length} bytes)`);
-      }
-    };
-  }
-
-  connect();
-})();
-</script>
+<div id="toolbar">
+    <div id="ws-status" title="Disconnected"></div>
+    <button id="btn-prev" title="Previous plot" disabled>&#9664;</button>
+    <button id="btn-next" title="Next plot" disabled>&#9654;</button>
+    <button id="btn-delete" title="Remove current plot" disabled>&#10005;</button>
+    <span id="plot-info">No plots</span>
+    <select id="export-select" disabled>
+        <option value="">Export…</option>
+        <option value="png">PNG</option>
+        <option value="svg">SVG</option>
+    </select>
+</div>
+<div id="canvas-container">
+    <canvas id="plot-canvas"></canvas>
+</div>
+<canvas id="metrics-canvas" style="display:none;"></canvas>
+<script src="renderer.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

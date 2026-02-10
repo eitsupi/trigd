@@ -12,7 +12,7 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = 30 * time.Second
-	maxMessageSize = 64 * 1024
+	maxMessageSize = 4 * 1024 * 1024
 )
 
 var upgrader = websocket.Upgrader{
