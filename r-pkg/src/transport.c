@@ -88,10 +88,10 @@ static int discover_socket_path(char *out, size_t outsize, int skip_env) {
         getenv("USERPROFILE"),
 #endif
         "/tmp",
-        NULL
     };
+    int n_tmpdirs = (int)(sizeof(tmpdirs) / sizeof(tmpdirs[0]));
 
-    for (int t = 0; tmpdirs[t]; t++) {
+    for (int t = 0; t < n_tmpdirs; t++) {
         if (!tmpdirs[t] || !tmpdirs[t][0]) continue;
         char discovery[1024];
         snprintf(discovery, sizeof(discovery), "%s/trigd-discovery.json", tmpdirs[t]);
@@ -183,7 +183,7 @@ int transport_connect(trigd_transport_t *t) {
 
     if (t->socket_path[0] == '\0') {
         if (discover_socket_path(t->socket_path, sizeof(t->socket_path), 0) != 0) {
-            REprintf("trigd: cannot find socket path. Set TRIGD_SOCKET or start the VS Code extension.\n");
+            REprintf("trigd: cannot find socket path. Set TRIGD_SOCKET or start the trigd server.\n");
             return -1;
         }
     }
