@@ -5,7 +5,7 @@
 **trigd** is a hard fork of [jgd](https://github.com/grantmcdermott/jgd)
 (JSON Graphics Device) by Grant McDermott. It is a lightweight, C-based R
 graphics device that serializes plotting operations as JSON and streams them
-over a Unix domain socket to an external renderer.
+to an external renderer over a local socket.
 
 ## Why fork?
 
@@ -35,29 +35,29 @@ projects.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│  R Process                                      │
-│                                                 │
-│  trigd R package (pure C)                       │
-│  ┌───────────────────────────────────────────┐  │
-│  │ DevDesc callbacks → JSON serializer       │  │
-│  │                     → socket client       │──┼──┐
-│  └───────────────────────────────────────────┘  │  │
-└─────────────────────────────────────────────────┘  │
-     Unix domain socket (NDJSON)                     │
-┌─────────────────────────────────────────────────┐  │
-│  Go server (trigd binary)                       │◄─┘
-│                                                 │
-│  Unix socket ←→ Hub ←→ WebSocket                │
-│                  ↓                              │
-│  HTTP static file server (embedded assets)      │
-└───────────────────────┬─────────────────────────┘
-                        │ HTTP + WebSocket
-┌───────────────────────▼─────────────────────────┐
-│  Browser                                        │
-│                                                 │
-│  Canvas2D renderer + plot history + toolbar     │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  R Process                                       │
+│                                                  │
+│  trigd R package (pure C)                        │
+│  ┌────────────────────────────────────────────┐  │
+│  │  DevDesc callbacks → JSON serializer       │  │
+│  │                      → socket client       │──┼──┐
+│  └────────────────────────────────────────────┘  │  │
+└──────────────────────────────────────────────────┘  │
+     Unix domain socket or TCP (NDJSON)               │
+┌──────────────────────────────────────────────────┐  │
+│  Go server (trigd binary)                        │◄─┘
+│                                                  │
+│  R socket ←→ Hub ←→ WebSocket                    │
+│                ↓                                 │
+│  HTTP static file server (embedded assets)       │
+└─────────────────────┬────────────────────────────┘
+                      │ HTTP + WebSocket
+┌─────────────────────▼────────────────────────────┐
+│  Browser                                         │
+│                                                  │
+│  Canvas2D renderer + plot history + toolbar      │
+└──────────────────────────────────────────────────┘
 ```
 
 The R package hooks into R's graphics engine via the standard `DevDesc`
