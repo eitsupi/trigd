@@ -35,7 +35,7 @@ func NewHub() *Hub {
 	return h
 }
 
-// Run is the main event loop. Call hub.PrepareRun() before launching this in a goroutine.
+// Run is the main event loop. Must be launched in its own goroutine after NewHub().
 func (h *Hub) Run() {
 	defer h.runWg.Done()
 	for {
