@@ -1,5 +1,5 @@
 Package: trigd
-Title: Trigger Graphics Device
+Title: Three-Layer Graphics Device
 Version: 0.0.1
 Authors@R: person("Grant", "McDermott", role = c("aut", "cre"),
     email = "contact@grantmcdermott.com")
