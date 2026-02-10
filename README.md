@@ -83,6 +83,23 @@ Canvas2D surface.
 - **Auto-discovery**: The server writes a discovery file so the R package can
   find the socket automatically
 
+## Current limitations
+
+Text metrics are currently computed by round-tripping to the browser's Canvas2D
+`measureText` API. This has several consequences:
+
+- **Browser required**: Metrics fall back to zero values (2-second timeout) when
+  no browser is connected, which can cause misaligned labels or collapsed layout.
+- **No text shaping**: Complex typographic features (ligatures, kerning, Arabic
+  and Indic scripts) are not handled by Canvas2D `measureText`.
+- **No CJK font fallback**: East Asian characters may not resolve to the correct
+  font when the primary font lacks coverage.
+- **No system font discovery**: The server cannot enumerate installed fonts;
+  font resolution depends entirely on the browser.
+
+The planned [Rust rewrite](#roadmap) will replace this with server-side metrics
+via parley, eliminating the browser dependency.
+
 ## Prerequisites
 
 - **R** (≥ 4.0)
