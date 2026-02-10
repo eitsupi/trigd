@@ -1,0 +1,48 @@
+/** Message types exchanged between R, server, and browser. */
+
+export interface FrameMessage {
+  type: "frame";
+  plot: {
+    sessionId?: string;
+    ops: unknown[];
+    device: Record<string, unknown>;
+  };
+  incremental?: boolean;
+}
+
+export interface ResizeMessage {
+  type: "resize";
+  width: number;
+  height: number;
+}
+
+export interface MetricsRequestMessage {
+  type: "metrics_request";
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface MetricsResponseMessage {
+  type: "metrics_response";
+  id: number;
+  width: number;
+  ascent: number;
+  descent: number;
+}
+
+export interface CloseMessage {
+  type: "close";
+}
+
+export interface DiscoveryFile {
+  socketPath: string;
+  httpPort: number;
+  pid: number;
+}
+
+export type ServerMessage =
+  | FrameMessage
+  | ResizeMessage
+  | MetricsRequestMessage
+  | MetricsResponseMessage
+  | CloseMessage;
