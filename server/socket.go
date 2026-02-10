@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -127,10 +128,10 @@ func handleRConnection(hub *Hub, conn net.Conn) {
 func extractSessionID(data []byte) string {
 	// Simple extraction without full JSON parse
 	needle := []byte(`"sessionId":"`)
-	idx := indexOf(data, needle)
+	idx := bytes.Index(data, needle)
 	if idx < 0 {
 		needle = []byte(`"sessionId": "`)
-		idx = indexOf(data, needle)
+		idx = bytes.Index(data, needle)
 		if idx < 0 {
 			return ""
 		}
@@ -142,22 +143,6 @@ func extractSessionID(data []byte) string {
 		}
 	}
 	return ""
-}
-
-func indexOf(data, needle []byte) int {
-	for i := 0; i <= len(data)-len(needle); i++ {
-		match := true
-		for j := 0; j < len(needle); j++ {
-			if data[i+j] != needle[j] {
-				match = false
-				break
-			}
-		}
-		if match {
-			return i
-		}
-	}
-	return -1
 }
 
 // createSocketListener creates a Unix domain socket or TCP listener for R connections.

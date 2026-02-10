@@ -19,6 +19,7 @@ type Hub struct {
 	unregisterClient chan *BrowserClient
 	broadcastFrame   chan []byte
 	done             chan struct{}
+	runWg            sync.WaitGroup // tracks Run() goroutine
 }
 
 func NewHub() *Hub {
@@ -34,6 +35,8 @@ func NewHub() *Hub {
 
 // Run is the main event loop. It must be called in its own goroutine.
 func (h *Hub) Run() {
+	h.runWg.Add(1)
+	defer h.runWg.Done()
 	for {
 		select {
 		case client := <-h.registerClient:
@@ -107,10 +110,21 @@ func (h *Hub) BroadcastToR(data []byte) {
 	}
 }
 
+// msgType extracts the "type" field from a JSON message.
+func msgType(data []byte) string {
+	var msg struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal(data, &msg) != nil {
+		return ""
+	}
+	return msg.Type
+}
+
 // HandleRMessage processes a message from an R session.
 func (h *Hub) HandleRMessage(session *RSession, data []byte) {
-	// Fast path: detect message type without full JSON parse
-	if bytes.Contains(data, []byte(`"type":"frame"`)) || bytes.Contains(data, []byte(`"type": "frame"`)) {
+	switch msgType(data) {
+	case "frame":
 		// Inject sessionId into the plot object if not present
 		if session.id != "" && !bytes.Contains(data, []byte(`"sessionId"`)) {
 			data = injectSessionID(data, session.id)
@@ -122,25 +136,20 @@ func (h *Hub) HandleRMessage(session *RSession, data []byte) {
 		if verbose {
 			log.Printf("frame from R session %s (%d bytes)", session.id, len(data))
 		}
-		return
-	}
 
-	if bytes.Contains(data, []byte(`"type":"metrics_request"`)) || bytes.Contains(data, []byte(`"type": "metrics_request"`)) {
+	case "metrics_request":
 		h.handleMetricsRequest(session, data)
-		return
-	}
 
-	if bytes.Contains(data, []byte(`"type":"close"`)) || bytes.Contains(data, []byte(`"type": "close"`)) {
+	case "close":
 		if verbose {
 			log.Printf("device close from R session %s", session.id)
 		}
-		// Forward to browsers
 		h.BroadcastToClients(data)
-		return
-	}
 
-	// Unknown message type, forward to browsers
-	h.BroadcastToClients(data)
+	default:
+		// Unknown message type, forward to browsers
+		h.BroadcastToClients(data)
+	}
 }
 
 // handleMetricsRequest routes a metrics request from R to browsers,
@@ -209,8 +218,15 @@ func (h *Hub) HandleMetricsResponse(data []byte) {
 }
 
 // Close shuts down the hub and all connections.
+// It stops Run() first and waits for it to exit, then cleans up.
 func (h *Hub) Close() {
 	close(h.done)
+
+	// Drain remaining channel messages so Run() can exit if it's
+	// blocked trying to send on registerClient/unregisterClient.
+	// Once done is closed, Run() returns on next select iteration.
+	// Give it a moment to exit before we clean up.
+	h.runWg.Wait()
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -242,7 +258,15 @@ func injectSessionID(data []byte, sessionID string) []byte {
 		return data
 	}
 	insertPos := plotIdx + braceIdx + 1
-	insert := []byte(fmt.Sprintf(`"sessionId":"%s",`, sessionID))
+
+	// JSON-encode the session ID to prevent injection
+	escaped, err := json.Marshal(sessionID)
+	if err != nil {
+		return data
+	}
+	insert := append([]byte(`"sessionId":`), escaped...)
+	insert = append(insert, ',')
+
 	result := make([]byte, 0, len(data)+len(insert))
 	result = append(result, data[:insertPos]...)
 	result = append(result, insert...)

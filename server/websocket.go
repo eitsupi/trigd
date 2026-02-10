@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"log"
 	"net/http"
 	"time"
@@ -109,23 +108,19 @@ func (c *BrowserClient) writePump() {
 
 // handleBrowserMessage processes a message from the browser.
 func (c *BrowserClient) handleBrowserMessage(data []byte) {
-	// Resize messages go to all R sessions
-	if bytes.Contains(data, []byte(`"type":"resize"`)) || bytes.Contains(data, []byte(`"type": "resize"`)) {
+	switch msgType(data) {
+	case "resize":
 		c.hub.BroadcastToR(data)
 		if verbose {
 			log.Printf("resize from browser (%d bytes)", len(data))
 		}
-		return
-	}
 
-	// Metrics response goes back to the originating R session
-	if bytes.Contains(data, []byte(`"type":"metrics_response"`)) || bytes.Contains(data, []byte(`"type": "metrics_response"`)) {
+	case "metrics_response":
 		c.hub.HandleMetricsResponse(data)
-		return
-	}
 
-	// Unknown messages from browser, ignore
-	if verbose {
-		log.Printf("unknown browser message: %s", data)
+	default:
+		if verbose {
+			log.Printf("unknown browser message: %s", data)
+		}
 	}
 }

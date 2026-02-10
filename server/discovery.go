@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,13 +13,18 @@ const discoveryFileName = "trigd-discovery.json"
 // writeDiscovery atomically writes the discovery file so R can find the server.
 // It writes to $TMPDIR and also to /tmp if different (matching transport.c search paths).
 func writeDiscovery(socketPath string, httpPort int) []string {
-	content := fmt.Sprintf(`{"socketPath":"%s","httpPort":%d,"pid":%d}`, socketPath, httpPort, os.Getpid())
+	disc := struct {
+		SocketPath string `json:"socketPath"`
+		HTTPPort   int    `json:"httpPort"`
+		PID        int    `json:"pid"`
+	}{socketPath, httpPort, os.Getpid()}
+	content, _ := json.Marshal(disc)
 
 	var written []string
 	locations := discoveryLocations()
 
 	for _, loc := range locations {
-		if err := atomicWrite(loc, []byte(content)); err != nil {
+		if err := atomicWrite(loc, content); err != nil {
 			log.Printf("warning: failed to write discovery to %s: %v", loc, err)
 			continue
 		}
