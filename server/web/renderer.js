@@ -69,6 +69,8 @@ async function replay(canvas, container, plot) {
     for (var i = 0; i < ops.length; i++) {
         await renderOp(ctx, ops[i], plotH);
     }
+
+    ctx.restore();
 }
 
 async function renderOp(ctx, op, plotH) {
@@ -238,7 +240,7 @@ function svgClose(name) {
 
 function svgGcStroke(gc) {
     if (!gc || gc.col == null) return ' stroke="none"';
-    var s = ' stroke="' + gc.col + '"';
+    var s = ' stroke="' + svgEsc(gc.col) + '"';
     s += ' stroke-width="' + (gc.lwd || 1) + '"';
     s += ' stroke-linecap="' + (gc.lend || 'round') + '"';
     s += ' stroke-linejoin="' + (gc.ljoin || 'round') + '"';
@@ -248,7 +250,7 @@ function svgGcStroke(gc) {
 
 function svgGcFill(gc) {
     if (!gc || gc.fill == null) return ' fill="none"';
-    return ' fill="' + gc.fill + '"';
+    return ' fill="' + svgEsc(gc.fill) + '"';
 }
 
 function svgFont(gc) {
@@ -272,7 +274,7 @@ function plotToSvg(plot, exportW, exportH) {
     var s = svgTag('svg', ' xmlns="http://www.w3.org/2000/svg" width="' + outW + '" height="' + outH + '" viewBox="0 0 ' + w + ' ' + h + '"') + '\n';
 
     if (plot.device.bg) {
-        s += svgTag('rect', ' width="' + w + '" height="' + h + '" fill="' + plot.device.bg + '"', true) + '\n';
+        s += svgTag('rect', ' width="' + w + '" height="' + h + '" fill="' + svgEsc(plot.device.bg) + '"', true) + '\n';
     }
 
     var clipId = 0;
@@ -335,10 +337,10 @@ function plotToSvg(plot, exportW, exportH) {
                 var anchor = 'start';
                 if (op.hadj === 0.5) anchor = 'middle';
                 else if (op.hadj === 1) anchor = 'end';
-                var col = (op.gc && op.gc.col != null) ? op.gc.col : 'black';
+                var col = (op.gc && op.gc.col != null) ? svgEsc(op.gc.col) : 'black';
                 var transform = 'translate(' + op.x + ',' + op.y + ')';
                 if (op.rot) transform += ' rotate(' + (-op.rot) + ')';
-                s += svgTag('text', ' transform="' + transform + '" font-family="' + f.family + '" font-size="' + f.size + '" font-weight="' + f.weight + '" font-style="' + f.style + '" text-anchor="' + anchor + '" fill="' + col + '"') + svgEsc(op.str) + svgClose('text') + '\n';
+                s += svgTag('text', ' transform="' + transform + '" font-family="' + svgEsc(f.family) + '" font-size="' + f.size + '" font-weight="' + f.weight + '" font-style="' + f.style + '" text-anchor="' + anchor + '" fill="' + col + '"') + svgEsc(op.str) + svgClose('text') + '\n';
                 break;
             }
             case 'raster': {
@@ -350,7 +352,7 @@ function plotToSvg(plot, exportW, exportH) {
                     var cx = dx + aw / 2, cy = dy + ah / 2;
                     transform = ' transform="rotate(' + (-op.rot) + ',' + cx + ',' + cy + ')"';
                 }
-                s += svgTag('image', ' x="' + dx + '" y="' + dy + '" width="' + aw + '" height="' + ah + '" href="' + op.data + '"' + transform, true) + '\n';
+                s += svgTag('image', ' x="' + dx + '" y="' + dy + '" width="' + aw + '" height="' + ah + '" href="' + svgEsc(op.data) + '"' + transform, true) + '\n';
                 break;
             }
         }

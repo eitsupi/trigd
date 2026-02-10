@@ -178,7 +178,7 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
     }
 
     // ---- Message handlers ----
@@ -206,12 +206,13 @@
         metricsCtx.font = style + size + 'px ' + family;
 
         var width = 0, ascent = 0, descent = 0;
+        var m;
         if (msg.kind === 'strWidth' && msg.str) {
-            var m = metricsCtx.measureText(msg.str);
+            m = metricsCtx.measureText(msg.str);
             width = m.width;
         } else if (msg.kind === 'metricInfo') {
             var ch = msg.c > 0 ? String.fromCodePoint(msg.c) : 'M';
-            var m = metricsCtx.measureText(ch);
+            m = metricsCtx.measureText(ch);
             width = m.width;
             ascent = m.actualBoundingBoxAscent || size * 0.75;
             descent = m.actualBoundingBoxDescent || size * 0.25;
@@ -248,11 +249,15 @@
 
     // ---- WebSocket ----
 
+    var reconnectDelay = 2000;
+    var maxReconnectDelay = 30000;
+
     function connect() {
         var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         ws = new WebSocket(proto + '//' + location.host + '/ws');
 
         ws.onopen = function() {
+            reconnectDelay = 2000;
             wsStatus.className = 'connected';
             wsStatus.title = 'Connected';
             // Send initial resize so R knows the viewport size
@@ -266,7 +271,8 @@
         ws.onclose = function() {
             wsStatus.className = '';
             wsStatus.title = 'Disconnected';
-            setTimeout(connect, 2000);
+            setTimeout(connect, reconnectDelay);
+            reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
         };
 
         ws.onerror = function() {
