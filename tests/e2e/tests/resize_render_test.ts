@@ -92,7 +92,7 @@ Deno.test("E2E: resize triggers canvas re-render", async (t) => {
 
       // Trigger another resize + frame cycle
       resizeSender.sendResize(800, 600);
-      await readOfType<ResizeMessage>(rClient, "resize", (m) => m.width === 800);
+      await readOfType<ResizeMessage>(rClient, "resize", (m) => m.width === 800 && m.height === 600);
 
       await rClient.sendFrame({
         ops: [{ op: "rect", x0: 0, y0: 0, x1: 800, y1: 600, gc: { fill: "#66cc33" } }],

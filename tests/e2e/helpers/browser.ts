@@ -58,7 +58,7 @@ export async function plotInfoText(page: Page): Promise<string> {
   })()`) as string;
 }
 
-/** Read messages from R, skipping any that don't match. */
+/** Read messages from R, skipping any that don't match. Defaults to 5 s timeout. */
 export async function readOfType<T extends ServerMessage>(
   rClient: RClient,
   type: string,
