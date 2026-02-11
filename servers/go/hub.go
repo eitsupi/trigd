@@ -113,11 +113,29 @@ func (h *Hub) BroadcastToR(data []byte) {
 
 // BroadcastResizeToR sends a resize message to all R sessions,
 // marking each session so the next frame can be tagged as a resize response.
+// Duplicate resizes with identical dimensions are forwarded to R but do not
+// re-arm the flag, preventing browser-side ws.onopen + ResizeObserver
+// duplicates from tagging an extra frame.
 func (h *Hub) BroadcastResizeToR(data []byte) {
+	var dims struct {
+		Width  int32 `json:"width"`
+		Height int32 `json:"height"`
+	}
+	json.Unmarshal(data, &dims) // best-effort; zero on parse failure
+
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for _, session := range h.sessions {
-		session.resizePending.Store(true)
+		// Only increment when dimensions actually changed, so duplicate
+		// resizes (ws.onopen + ResizeObserver with same dims) don't
+		// cause extra frames to be tagged.
+		oldW := session.lastResizeW.Load()
+		oldH := session.lastResizeH.Load()
+		if dims.Width != oldW || dims.Height != oldH {
+			session.resizePending.Store(true)
+			session.lastResizeW.Store(dims.Width)
+			session.lastResizeH.Store(dims.Height)
+		}
 		if err := session.Send(data); err != nil {
 			log.Printf("failed to send to R session %s: %v", session.id, err)
 		}

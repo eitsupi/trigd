@@ -8,8 +8,10 @@ let sessionCounter = 0;
  */
 export class RSession {
   id: string;
-  /** Set when a resize message is forwarded; cleared on next frame. */
+  /** Whether the next frame should be tagged as a resize response. */
   resizePending = false;
+  lastResizeW = 0;
+  lastResizeH = 0;
   private conn: Deno.Conn;
   private hub: Hub;
   private encoder = new TextEncoder();

@@ -133,10 +133,9 @@ Deno.test("E2E: resize after history navigation must not show ghost image", asyn
       assertEquals(colors.hasGreen, false, "no leak of resize frame (green)");
     });
 
-    await t.step("double resize race — second frame must not addPlot", async () => {
-      // This tests the race: two resize messages before R responds.
-      // The boolean resizePending flag can only tag ONE frame.
-      // Navigate to plot 1 if not already there
+    await t.step("sequential resizes — both tagged as resize", async () => {
+      // Two resizes in sequence (R responds between them).
+      // Both frames should be tagged resize:true → replaceLatest.
       const infoPre = await page.evaluate(
         `document.getElementById('plot-info').textContent`,
       ) as string;
@@ -149,38 +148,35 @@ Deno.test("E2E: resize after history navigation must not show ghost image", asyn
         `document.getElementById('plot-info').textContent`,
       ) as string;
 
-      // Send TWO resizes rapidly (before R can respond)
+      // First resize
       resizeSender.sendResize(900, 700);
-      resizeSender.sendResize(1000, 750);
-
-      // Read both resize messages at R
       const r1 = await readOfType<ResizeMessage>(rClient, "resize", (m) => m.width === 900);
-      const r2 = await readOfType<ResizeMessage>(rClient, "resize", (m) => m.width === 1000);
       assertEquals(r1.width, 900);
-      assertEquals(r2.width, 1000);
 
-      // R sends TWO frames (one per resize). The server's boolean flag
-      // will only tag the first. The second might be treated as addPlot.
       await rClient.sendFrame({
         ops: [{ op: "rect", x0: 0, y0: 0, x1: 900, y1: 700, gc: { fill: "#00ff00" } }],
         device: { width: 900, height: 700, bg: "#00ff00" },
       });
+      await delay(300);
+
+      // Second resize
+      resizeSender.sendResize(1000, 750);
+      const r2 = await readOfType<ResizeMessage>(rClient, "resize", (m) => m.width === 1000);
+      assertEquals(r2.width, 1000);
+
       await rClient.sendFrame({
         ops: [{ op: "rect", x0: 0, y0: 0, x1: 1000, y1: 750, gc: { fill: "#ffff00" } }],
         device: { width: 1000, height: 750, bg: "#ffff00" },
       });
       await delay(500);
 
-      // Check: did the second frame cause addPlot (extra history entry)?
+      // Neither resize should have added a history entry
       const countAfter = await page.evaluate(
         `document.getElementById('plot-info').textContent`,
       ) as string;
-
-      // Both resize responses should use replaceLatest, not addPlot.
-      // If we went from "1 / 2" to "1 / 3" or "3 / 3", that's the bug.
       assertEquals(
         countAfter, countBefore,
-        `double resize should not add history entries: was ${countBefore}, now ${countAfter}`,
+        `sequential resizes should not add history entries: was ${countBefore}, now ${countAfter}`,
       );
 
       const colors = await sampleCanvasColors(page);

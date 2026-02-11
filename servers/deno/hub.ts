@@ -67,8 +67,20 @@ export class Hub {
    * next frame can be tagged as a resize response.
    */
   broadcastResizeToR(data: string): void {
+    let dims = { width: 0, height: 0 };
+    try {
+      dims = JSON.parse(data);
+    } catch { /* use zero defaults */ }
+
     for (const session of this.sessions.values()) {
-      session.resizePending = true;
+      // Only arm the flag when dimensions actually changed, so
+      // duplicate resizes (ws.onopen + ResizeObserver) don't
+      // cause an extra frame to be tagged.
+      if (dims.width !== session.lastResizeW || dims.height !== session.lastResizeH) {
+        session.resizePending = true;
+        session.lastResizeW = dims.width;
+        session.lastResizeH = dims.height;
+      }
       session.send(data).catch((e) => {
         console.error(
           `failed to send to R session ${session.id}: ${e}`,

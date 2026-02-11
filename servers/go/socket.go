@@ -25,6 +25,8 @@ type RSession struct {
 	mu            sync.Mutex
 	writer        *bufio.Writer
 	resizePending atomic.Bool
+	lastResizeW   atomic.Int32
+	lastResizeH   atomic.Int32
 }
 
 // Send writes data followed by a newline to the R session.
