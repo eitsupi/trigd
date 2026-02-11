@@ -18,8 +18,10 @@ export async function serveStaticFile(
   }
 
   // Resolve and normalize to prevent path traversal (encoded segments, symlinks, etc.)
+  // Use trailing separator to prevent sibling-prefix bypass (e.g. /srv/web-secret matching /srv/web)
+  const base = normalize(resolve(webDir));
   const filePath = normalize(resolve(webDir, pathname.slice(1)));
-  if (!filePath.startsWith(normalize(resolve(webDir)))) {
+  if (filePath !== base && !filePath.startsWith(base + "/")) {
     return new Response("forbidden", { status: 403 });
   }
 
