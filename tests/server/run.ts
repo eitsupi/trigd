@@ -26,7 +26,7 @@ if (server === "deno") {
   // Create a wrapper script so the test helper can spawn it as a single binary
   const mainTs = join(rootDir, "servers", "deno", "main.ts");
   const wrapper = join(Deno.makeTempDirSync(), "trigd-deno");
-  Deno.writeTextFileSync(wrapper, `#!/bin/sh\nexec deno run --allow-all ${mainTs} "$@"\n`);
+  Deno.writeTextFileSync(wrapper, `#!/bin/sh\nexec deno run --allow-all "${mainTs}" "$@"\n`);
   Deno.chmodSync(wrapper, 0o755);
   serverBin = wrapper;
   console.log(`==> Using Deno server: ${mainTs}`);

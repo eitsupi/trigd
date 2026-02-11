@@ -13,8 +13,8 @@ export function handleWebSocket(req: Request, hub: Hub): Response {
   hub.registerClient(client);
 
   socket.onmessage = (event: MessageEvent) => {
-    const data = event.data as string;
-    client.handleMessage(data);
+    if (typeof event.data !== "string") return;
+    client.handleMessage(event.data);
   };
 
   socket.onclose = () => {

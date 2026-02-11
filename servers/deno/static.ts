@@ -1,3 +1,5 @@
+import { normalize, resolve } from "@std/path";
+
 /**
  * Serve static files from a directory.
  * Returns a Response with the file content and appropriate MIME type,
@@ -15,13 +17,11 @@ export async function serveStaticFile(
     pathname = "/index.html";
   }
 
-  // Prevent path traversal
-  if (pathname.includes("..")) {
+  // Resolve and normalize to prevent path traversal (encoded segments, symlinks, etc.)
+  const filePath = normalize(resolve(webDir, pathname.slice(1)));
+  if (!filePath.startsWith(normalize(resolve(webDir)))) {
     return new Response("forbidden", { status: 403 });
   }
-
-  // Resolve to filesystem path (strip leading slash)
-  const filePath = `${webDir}${pathname}`;
 
   let file: Deno.FsFile;
   try {
