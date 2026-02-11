@@ -68,8 +68,8 @@ Deno.test("metrics request/response round-trip", async (t) => {
         assertEquals(msg.descent, 0);
 
         assert(
-          elapsed >= 1500,
-          `Fallback arrived too early: ${elapsed}ms (expected >= 1500ms)`,
+          elapsed >= 1800,
+          `Fallback arrived too early: ${elapsed}ms (expected >= 1800ms)`,
         );
       },
     );

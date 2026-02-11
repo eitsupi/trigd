@@ -1,4 +1,4 @@
-import { join } from "jsr:@std/path";
+import { dirname, fromFileUrl, join } from "@std/path";
 import type { DiscoveryFile } from "./types.ts";
 
 /**
@@ -27,7 +27,10 @@ export class TrigdServer {
   async start(): Promise<void> {
     const bin =
       Deno.env.get("TRIGD_SERVER_BIN") ??
-      join(Deno.cwd(), "..", "..", "server", "trigd");
+      join(
+        dirname(fromFileUrl(import.meta.url)),
+        "..", "..", "..", "server", "trigd",
+      );
 
     const cmd = new Deno.Command(bin, {
       args: ["-socket", this.socketPath, "-http", "127.0.0.1:0", "-v"],
