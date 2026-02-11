@@ -113,7 +113,9 @@ Deno.test("E2E: resize after history navigation must not show ghost image", asyn
 
       // The ResizeObserver fires → replayCurrentPlot() + debounced resize (300ms)
       // Wait for the debounced resize message to reach R
-      const msg = await readOfType<ResizeMessage>(rClient, "resize", 3000);
+      const msg = await readOfType<ResizeMessage>(
+        rClient, "resize", (m) => m.width !== 800 || m.height !== 600,
+      );
 
       // R responds with resize frame
       await rClient.sendFrame({
@@ -144,7 +146,7 @@ Deno.test("E2E: resize after history navigation must not show ghost image", asyn
         await delay(300);
       }
 
-      const countBefore = await page.evaluate(
+      const infoBefore = await page.evaluate(
         `document.getElementById('plot-info').textContent`,
       ) as string;
 
@@ -171,12 +173,12 @@ Deno.test("E2E: resize after history navigation must not show ghost image", asyn
       await delay(500);
 
       // Neither resize should have added a history entry
-      const countAfter = await page.evaluate(
+      const infoAfter = await page.evaluate(
         `document.getElementById('plot-info').textContent`,
       ) as string;
       assertEquals(
-        countAfter, countBefore,
-        `sequential resizes should not add history entries: was ${countBefore}, now ${countAfter}`,
+        infoAfter, infoBefore,
+        `sequential resizes should not add history entries: was ${infoBefore}, now ${infoAfter}`,
       );
 
       const colors = await sampleCanvasColors(page);

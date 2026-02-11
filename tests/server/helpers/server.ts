@@ -29,7 +29,10 @@ export class TrigdServer {
     let bin: string;
     let prefixArgs: string[];
     if (binEnv) {
-      const parts = binEnv.split(/\s+/);
+      const parts = binEnv.trim().split(/\s+/);
+      if (!parts[0]) {
+        throw new Error("TRIGD_SERVER_BIN is set but empty");
+      }
       bin = parts[0];
       prefixArgs = parts.slice(1);
     } else {

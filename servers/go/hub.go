@@ -121,20 +121,30 @@ func (h *Hub) BroadcastResizeToR(data []byte) {
 		Width  int32 `json:"width"`
 		Height int32 `json:"height"`
 	}
-	json.Unmarshal(data, &dims) // best-effort; zero on parse failure
+	parsed := json.Unmarshal(data, &dims) == nil && (dims.Width > 0 || dims.Height > 0)
 
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for _, session := range h.sessions {
-		// Only increment when dimensions actually changed, so duplicate
-		// resizes (ws.onopen + ResizeObserver with same dims) don't
-		// cause extra frames to be tagged.
-		oldW := session.lastResizeW.Load()
-		oldH := session.lastResizeH.Load()
-		if dims.Width != oldW || dims.Height != oldH {
+		// Only arm when dimensions actually changed, so duplicate resizes
+		// (ws.onopen + ResizeObserver with same dims) don't cause extra
+		// frames to be tagged.
+		//
+		// Note: The load-compare-store on per-session atomics is not
+		// atomic as a unit; concurrent calls from multiple browser
+		// goroutines could both see "changed" for the same dimensions.
+		// This is benign — the worst case is one extra resize-tagged
+		// frame, identical to the pre-dedup behavior.
+		if parsed {
+			oldW := session.lastResizeW.Load()
+			oldH := session.lastResizeH.Load()
+			if dims.Width != oldW || dims.Height != oldH {
+				session.resizePending.Store(true)
+				session.lastResizeW.Store(dims.Width)
+				session.lastResizeH.Store(dims.Height)
+			}
+		} else {
 			session.resizePending.Store(true)
-			session.lastResizeW.Store(dims.Width)
-			session.lastResizeH.Store(dims.Height)
 		}
 		if err := session.Send(data); err != nil {
 			log.Printf("failed to send to R session %s: %v", session.id, err)
