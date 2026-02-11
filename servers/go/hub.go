@@ -111,6 +111,19 @@ func (h *Hub) BroadcastToR(data []byte) {
 	}
 }
 
+// BroadcastResizeToR sends a resize message to all R sessions,
+// marking each session so the next frame can be tagged as a resize response.
+func (h *Hub) BroadcastResizeToR(data []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for _, session := range h.sessions {
+		session.resizePending.Store(true)
+		if err := session.Send(data); err != nil {
+			log.Printf("failed to send to R session %s: %v", session.id, err)
+		}
+	}
+}
+
 // msgType extracts the "type" field from a JSON message.
 func msgType(data []byte) string {
 	var msg struct {
@@ -126,6 +139,10 @@ func msgType(data []byte) string {
 func (h *Hub) HandleRMessage(session *RSession, data []byte) {
 	switch msgType(data) {
 	case "frame":
+		// Tag resize-triggered frames so the browser can update in place
+		if session.resizePending.CompareAndSwap(true, false) {
+			data = injectResizeFlag(data)
+		}
 		// Inject sessionId into the plot object if not present
 		if session.id != "" && !bytes.Contains(data, []byte(`"sessionId"`)) {
 			data = injectSessionID(data, session.id)
@@ -262,6 +279,21 @@ func (h *Hub) Close() {
 		session.conn.Close()
 		delete(h.sessions, id)
 	}
+}
+
+// injectResizeFlag adds "resize":true to a frame message so the browser
+// knows this frame is a response to a resize event, not a new plot.
+func injectResizeFlag(data []byte) []byte {
+	idx := bytes.IndexByte(data, '{')
+	if idx < 0 {
+		return data
+	}
+	insert := []byte(`"resize":true,`)
+	result := make([]byte, 0, len(data)+len(insert))
+	result = append(result, data[:idx+1]...)
+	result = append(result, insert...)
+	result = append(result, data[idx+1:]...)
+	return result
 }
 
 // injectSessionID adds sessionId to the plot object in a frame message.

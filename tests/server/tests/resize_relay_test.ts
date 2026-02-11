@@ -3,7 +3,7 @@ import { TrigdServer } from "../helpers/server.ts";
 import { RClient } from "../helpers/r_client.ts";
 import { BrowserClient } from "../helpers/browser_client.ts";
 import { delay } from "@std/async";
-import type { ResizeMessage } from "../helpers/types.ts";
+import type { FrameMessage, ResizeMessage } from "../helpers/types.ts";
 
 Deno.test("Browser→R resize relay", async (t) => {
   const server = new TrigdServer();
@@ -34,6 +34,31 @@ Deno.test("Browser→R resize relay", async (t) => {
       const msg = await rClient.readMessage<ResizeMessage>();
       assertEquals(msg.width, 1920);
       assertEquals(msg.height, 1080);
+    });
+
+    await t.step("frame after resize has resize flag", async () => {
+      browser.sendResize(1024, 768);
+
+      // R receives the resize
+      await rClient.readMessage<ResizeMessage>();
+
+      // R responds with a frame (simulating device redraw)
+      await rClient.sendFrame(
+        { ops: [{ op: "rect" }], device: { width: 1024, height: 768 } },
+      );
+
+      const frame = await browser.waitForType<FrameMessage>("frame");
+      assertEquals(frame.resize, true);
+    });
+
+    await t.step("frame without preceding resize has no resize flag", async () => {
+      // R sends a regular frame (not triggered by resize)
+      await rClient.sendFrame(
+        { ops: [{ op: "circle" }], device: { width: 1024, height: 768 } },
+      );
+
+      const frame = await browser.waitForType<FrameMessage>("frame");
+      assertEquals(frame.resize, undefined);
     });
 
     await t.step("resize is broadcast to all R sessions", async () => {

@@ -63,6 +63,21 @@ export class Hub {
   }
 
   /**
+   * Broadcast a resize message to all R sessions, marking each so the
+   * next frame can be tagged as a resize response.
+   */
+  broadcastResizeToR(data: string): void {
+    for (const session of this.sessions.values()) {
+      session.resizePending = true;
+      session.send(data).catch((e) => {
+        console.error(
+          `failed to send to R session ${session.id}: ${e}`,
+        );
+      });
+    }
+  }
+
+  /**
    * Process a message from an R session.
    * Routes based on message type (frame, metrics_request, close, etc.).
    */
@@ -71,10 +86,15 @@ export class Hub {
 
     switch (type) {
       case "frame": {
-        // Inject sessionId into the plot object if not present
         let data = line;
-        if (session.id && !line.includes('"sessionId"')) {
-          data = injectSessionId(line, session.id);
+        // Tag resize-triggered frames so the browser can update in place
+        if (session.resizePending) {
+          session.resizePending = false;
+          data = injectResizeFlag(data);
+        }
+        // Inject sessionId into the plot object if not present
+        if (session.id && !data.includes('"sessionId"')) {
+          data = injectSessionId(data, session.id);
         }
         this.broadcastToClients(data);
         if (this.verbose) {
@@ -247,6 +267,16 @@ export class Hub {
 function extractType(line: string): string {
   const m = line.match(/"type"\s*:\s*"([^"]+)"/);
   return m ? m[1] : "";
+}
+
+/**
+ * Inject "resize":true into a frame message so the browser knows this
+ * frame is a response to a resize event, not a new plot.
+ */
+function injectResizeFlag(line: string): string {
+  const idx = line.indexOf("{");
+  if (idx < 0) return line;
+  return line.slice(0, idx + 1) + '"resize":true,' + line.slice(idx + 1);
 }
 
 /**

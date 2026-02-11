@@ -83,6 +83,15 @@
         return session.plots[session.currentIndex];
     };
 
+    PlotHistory.prototype.replaceLatest = function(sessionId, plot) {
+        var session = this._sessions.get(sessionId);
+        if (!session || session.plots.length === 0) {
+            return this.addPlot(sessionId, plot);
+        }
+        session.plots[session.plots.length - 1] = plot;
+        // Don't change currentIndex — user stays on their historical view
+    };
+
     PlotHistory.prototype.currentIndex = function() {
         var session = this._sessions.get(this._activeSessionId);
         return session ? session.currentIndex + 1 : 0;
@@ -213,7 +222,9 @@
     function handleFrame(msg) {
         var plot = msg.plot;
         var sessionId = plot.sessionId || 'default';
-        if (msg.incremental) {
+        if (msg.resize) {
+            history.replaceLatest(sessionId, plot);
+        } else if (msg.incremental) {
             history.appendOps(sessionId, plot);
         } else {
             history.addPlot(sessionId, plot);

@@ -8,6 +8,7 @@ export interface FrameMessage {
     device: Record<string, unknown>;
   };
   incremental?: boolean;
+  resize?: boolean;
 }
 
 export interface ResizeMessage {

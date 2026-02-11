@@ -110,7 +110,7 @@ func (c *BrowserClient) writePump() {
 func (c *BrowserClient) handleBrowserMessage(data []byte) {
 	switch msgType(data) {
 	case "resize":
-		c.hub.BroadcastToR(data)
+		c.hub.BroadcastResizeToR(data)
 		if verbose {
 			log.Printf("resize from browser (%d bytes)", len(data))
 		}

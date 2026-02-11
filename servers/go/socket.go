@@ -19,11 +19,12 @@ import (
 
 // RSession represents a connected R process.
 type RSession struct {
-	id     string
-	conn   net.Conn
-	hub    *Hub
-	mu     sync.Mutex
-	writer *bufio.Writer
+	id            string
+	conn          net.Conn
+	hub           *Hub
+	mu            sync.Mutex
+	writer        *bufio.Writer
+	resizePending atomic.Bool
 }
 
 // Send writes data followed by a newline to the R session.

@@ -60,7 +60,7 @@ class WebSocketClient implements BrowserClient {
 
     switch (type) {
       case "resize":
-        this.hub.broadcastToR(data);
+        this.hub.broadcastResizeToR(data);
         break;
 
       case "metrics_response":
