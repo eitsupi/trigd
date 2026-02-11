@@ -400,11 +400,29 @@ static void cb_mode(int mode, pDevDesc dd) {
         st->drawing = 1;
     } else if (mode == 0) {
         st->drawing = 0;
-        if (st->page.op_count > st->last_flushed_ops) {
+        /* Only flush when display is not held.  High-level plot functions
+         * (plot, hist, …) bracket drawing with dev.hold/dev.flush, so
+         * cb_holdflush handles the single flush at the end.  Without hold
+         * (e.g. interactive lines()/points()), we flush immediately. */
+        if (st->hold_level == 0 && st->page.op_count > st->last_flushed_ops) {
             flush_frame(st, 1);
             st->last_flushed_ops = st->page.op_count;
         }
     }
+}
+
+static int cb_holdflush(pDevDesc dd, int level) {
+    trigd_state_t *st = get_state(dd);
+    int old = st->hold_level;
+    st->hold_level = level;
+    /* When transitioning from held to flushed, send accumulated frame. */
+    if (old > 0 && level == 0) {
+        if (st->page.op_count > st->last_flushed_ops) {
+            flush_frame(st, 0);
+            st->last_flushed_ops = st->page.op_count;
+        }
+    }
+    return old;
 }
 
 static void cb_size(double *left, double *right, double *bottom, double *top,
@@ -552,7 +570,7 @@ void trigd_set_callbacks(pDevDesc dd) {
     dd->getEvent = NULL;
     dd->newFrameConfirm = NULL;
     dd->eventHelper = NULL;
-    dd->holdflush = NULL;
+    dd->holdflush = cb_holdflush;
     dd->cap = NULL;
 
     dd->setPattern = cb_setPattern;
