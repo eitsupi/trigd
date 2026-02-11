@@ -26,6 +26,7 @@ export interface MockMetricsStats {
   strWidthRequests: number;
   metricInfoRequests: number;
   framesReceived: number;
+  totalOps: number;
   lastFrameOps: number;
 }
 
@@ -35,6 +36,7 @@ export class MockMetricsClient {
   #strWidthRequests = 0;
   #metricInfoRequests = 0;
   #framesReceived = 0;
+  #totalOps = 0;
   #lastFrameOps = 0;
   #onFrame: ((msg: FrameMessage) => void) | null = null;
 
@@ -67,11 +69,14 @@ export class MockMetricsClient {
       case "metrics_request":
         this.#handleMetrics(msg as MetricsRequestMessage);
         break;
-      case "frame":
+      case "frame": {
         this.#framesReceived++;
-        this.#lastFrameOps = (msg as FrameMessage).plot?.ops?.length ?? 0;
+        const ops = (msg as FrameMessage).plot?.ops?.length ?? 0;
+        this.#totalOps += ops;
+        this.#lastFrameOps = ops;
         this.#onFrame?.(msg as FrameMessage);
         break;
+      }
     }
   }
 
@@ -111,6 +116,7 @@ export class MockMetricsClient {
       strWidthRequests: this.#strWidthRequests,
       metricInfoRequests: this.#metricInfoRequests,
       framesReceived: this.#framesReceived,
+      totalOps: this.#totalOps,
       lastFrameOps: this.#lastFrameOps,
     };
   }
@@ -120,6 +126,7 @@ export class MockMetricsClient {
     this.#strWidthRequests = 0;
     this.#metricInfoRequests = 0;
     this.#framesReceived = 0;
+    this.#totalOps = 0;
     this.#lastFrameOps = 0;
   }
 
