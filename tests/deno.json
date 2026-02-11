@@ -7,6 +7,8 @@
   "tasks": {
     "test": "deno test --allow-all server/tests/",
     "test:verbose": "deno test --allow-all server/tests/ -- --verbose",
-    "build-and-test": "deno run --allow-all server/run.ts"
+    "build-and-test": "deno run --allow-all server/run.ts",
+    "test:go": "deno run --allow-all server/run.ts --server=go",
+    "test:deno": "deno run --allow-all server/run.ts --server=deno"
   }
 }
