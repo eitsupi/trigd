@@ -294,12 +294,10 @@ int transport_recv_line(trigd_transport_t *t, char *buf, size_t bufsize, int tim
     for (;;) {
         size_t space = sizeof(t->readbuf) - t->readbuf_len;
         if (space == 0) {
-            /* Buffer full without newline — return what we have */
-            size_t copylen = bufsize - 1 < t->readbuf_len ? bufsize - 1 : t->readbuf_len;
-            memcpy(buf, t->readbuf, copylen);
-            buf[copylen] = '\0';
+            /* Buffer full without newline — protocol violation, disconnect */
             t->readbuf_len = 0;
-            return (int)copylen;
+            t->connected = 0;
+            return -1;
         }
 
         int r = (int)recv(s, t->readbuf + t->readbuf_len, (int)space, 0);
