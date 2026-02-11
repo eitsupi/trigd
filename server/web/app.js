@@ -35,6 +35,20 @@
         this._activeSessionId = sessionId;
     };
 
+    PlotHistory.prototype.appendOps = function(sessionId, plot) {
+        var session = this._sessions.get(sessionId);
+        if (!session || session.plots.length === 0) {
+            return this.addPlot(sessionId, plot);
+        }
+        var current = session.plots[session.currentIndex];
+        var newOps = plot.ops || [];
+        for (var i = 0; i < newOps.length; i++) {
+            current.ops.push(newOps[i]);
+        }
+        current.device = plot.device;
+        this._activeSessionId = sessionId;
+    };
+
     PlotHistory.prototype.currentPlot = function() {
         var session = this._sessions.get(this._activeSessionId);
         if (!session || session.currentIndex < 0) return null;
@@ -183,16 +197,28 @@
 
     // ---- Message handlers ----
 
+    var renderScheduled = false;
+
+    function scheduleRender() {
+        if (!renderScheduled) {
+            renderScheduled = true;
+            requestAnimationFrame(function() {
+                renderScheduled = false;
+                replayCurrentPlot();
+                updateToolbar();
+            });
+        }
+    }
+
     function handleFrame(msg) {
         var plot = msg.plot;
         var sessionId = plot.sessionId || 'default';
         if (msg.incremental) {
-            history.replaceCurrent(sessionId, plot);
+            history.appendOps(sessionId, plot);
         } else {
             history.addPlot(sessionId, plot);
         }
-        replayCurrentPlot();
-        updateToolbar();
+        scheduleRender();
     }
 
     function handleMetricsRequest(msg) {

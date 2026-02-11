@@ -14,6 +14,7 @@ typedef struct {
     double dpi;
     int bg;
     int finalized;
+    size_t last_flush_offset; /* byte offset in jw.buf after last incremental flush */
 } trigd_page_t;
 
 void page_init(trigd_page_t *p, double width, double height, double dpi, int bg);
