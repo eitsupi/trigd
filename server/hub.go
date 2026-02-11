@@ -168,6 +168,11 @@ func (h *Hub) handleMetricsRequest(session *RSession, data []byte) {
 	// If no browsers are connected, immediately send zero-value fallback.
 	// R treats zero-value responses the same as a timeout: it falls through
 	// to local font metric approximations, but without the 500ms poll wait.
+	//
+	// Note: there is a benign TOCTOU race — a browser could connect between
+	// the unlock and the send. The only consequence is one request using
+	// local approximation instead of browser-measured metrics, which is
+	// identical to the 2s timeout fallback behavior.
 	h.mu.RLock()
 	nClients := len(h.clients)
 	h.mu.RUnlock()
