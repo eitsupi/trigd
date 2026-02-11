@@ -414,7 +414,7 @@ static void cb_mode(int mode, pDevDesc dd) {
 static int cb_holdflush(pDevDesc dd, int level) {
     trigd_state_t *st = get_state(dd);
     int old = st->hold_level;
-    st->hold_level = level;
+    st->hold_level = level > 0 ? level : 0;
     /* When transitioning from held to flushed, send accumulated frame. */
     if (old > 0 && level == 0) {
         if (st->page.op_count > st->last_flushed_ops) {
