@@ -1,24 +1,9 @@
 import { assertEquals } from "@std/assert";
 import { TrigdServer } from "../../server/helpers/server.ts";
 import { RClient } from "../../server/helpers/r_client.ts";
-import { E2EBrowser } from "../helpers/browser.ts";
+import { E2EBrowser, readOfType } from "../helpers/browser.ts";
 import { delay } from "@std/async";
-import type { MetricsResponseMessage, ResizeMessage, ServerMessage } from "../../server/helpers/types.ts";
-
-/** Read messages from R, skipping any that aren't the expected type. */
-async function readOfType<T extends ServerMessage>(
-  rClient: RClient,
-  type: string,
-  timeoutMs = 5000,
-): Promise<T> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const remaining = deadline - Date.now();
-    const msg = await rClient.readMessage<ServerMessage>(remaining);
-    if (msg.type === type) return msg as T;
-  }
-  throw new Error(`Timed out waiting for message of type "${type}"`);
-}
+import type { MetricsResponseMessage, ResizeMessage } from "../../server/helpers/types.ts";
 
 Deno.test("E2E: metrics round-trip with real browser measurement", async (t) => {
   const server = new TrigdServer();

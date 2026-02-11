@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { TrigdServer } from "../../server/helpers/server.ts";
 import { RClient } from "../../server/helpers/r_client.ts";
 import { BrowserClient } from "../../server/helpers/browser_client.ts";
-import { E2EBrowser, canvasHasContent, canvasDimensions } from "../helpers/browser.ts";
+import { E2EBrowser, canvasHasContent, canvasDimensions, readOfType } from "../helpers/browser.ts";
 import { delay } from "@std/async";
 import type { ResizeMessage } from "../../server/helpers/types.ts";
 
@@ -47,17 +47,11 @@ Deno.test("E2E: resize triggers canvas re-render", async (t) => {
       // Send resize with unique dimensions so we can identify it
       resizeSender.sendResize(1234, 5678);
 
-      // Read messages until we find our specific resize (skip any buffered ones)
-      let msg: ResizeMessage;
-      const deadline = Date.now() + 5000;
-      while (Date.now() < deadline) {
-        msg = await rClient.readMessage<ResizeMessage>(3000);
-        if (msg.type === "resize" && msg.width === 1234 && msg.height === 5678) {
-          break;
-        }
-      }
-      assertEquals(msg!.width, 1234);
-      assertEquals(msg!.height, 5678);
+      const msg = await readOfType<ResizeMessage>(
+        rClient, "resize", (m) => m.width === 1234,
+      );
+      assertEquals(msg.width, 1234);
+      assertEquals(msg.height, 5678);
     });
 
     await t.step("R frame after resize re-renders with new dimensions", async () => {
@@ -84,6 +78,34 @@ Deno.test("E2E: resize triggers canvas re-render", async (t) => {
         `document.getElementById('plot-info').textContent`,
       ) as string;
       assertEquals(countAfter, countBefore, "resize frame should not add a new history entry");
+    });
+
+    await t.step("resize preserves user position in history", async () => {
+      // Navigate back to plot 1 of 2
+      await page.evaluate(`document.getElementById('btn-prev').click()`);
+      await delay(200);
+
+      const infoBefore = await page.evaluate(
+        `document.getElementById('plot-info').textContent`,
+      ) as string;
+      assertEquals(infoBefore, "1 / 2");
+
+      // Trigger another resize + frame cycle
+      resizeSender.sendResize(800, 600);
+      await readOfType<ResizeMessage>(rClient, "resize", (m) => m.width === 800);
+
+      await rClient.sendFrame({
+        ops: [{ op: "rect", x0: 0, y0: 0, x1: 800, y1: 600, gc: { fill: "#66cc33" } }],
+        device: { width: 800, height: 600, bg: "#ffffff" },
+      });
+      await delay(500);
+
+      // User should stay on plot 1 — resize updates the latest plot in
+      // the background without changing the navigation position.
+      const infoAfter = await page.evaluate(
+        `document.getElementById('plot-info').textContent`,
+      ) as string;
+      assertEquals(infoAfter, "1 / 2", "resize should not jump user to latest plot");
     });
 
   } finally {
