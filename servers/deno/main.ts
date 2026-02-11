@@ -70,10 +70,7 @@ async function main(): Promise<void> {
   console.log(`  HTTP:      http://127.0.0.1:${httpPort}/`);
 
   // Wait for shutdown signal
-  const sig = await Promise.race([
-    signalOnce("SIGINT"),
-    signalOnce("SIGTERM"),
-  ]);
+  const sig = await waitForSignal("SIGINT", "SIGTERM");
 
   console.error(`received signal ${sig}, shutting down...`);
 
@@ -122,14 +119,21 @@ async function acceptLoop(
   }
 }
 
-/** Wait for a signal once. Returns the signal name. */
-function signalOnce(sig: Deno.Signal): Promise<string> {
+/** Wait for any of the given signals. Cleans up all listeners on resolve. */
+function waitForSignal(...signals: Deno.Signal[]): Promise<string> {
   return new Promise((resolve) => {
-    const handler = () => {
-      Deno.removeSignalListener(sig, handler);
-      resolve(sig);
-    };
-    Deno.addSignalListener(sig, handler);
+    const handlers: Array<[Deno.Signal, () => void]> = [];
+    for (const sig of signals) {
+      const handler = () => {
+        // Remove all listeners so the unused ones don't keep the event loop alive
+        for (const [s, h] of handlers) {
+          Deno.removeSignalListener(s, h);
+        }
+        resolve(sig);
+      };
+      handlers.push([sig, handler]);
+      Deno.addSignalListener(sig, handler);
+    }
   });
 }
 
