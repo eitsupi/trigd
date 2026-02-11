@@ -11,7 +11,7 @@
  *   deno run --allow-all run.ts --no-client     # run without mock client (timeout mode)
  */
 
-import { join, dirname, fromFileUrl } from "jsr:@std/path";
+import { dirname, fromFileUrl, join } from "@std/path";
 import { TrigdServer } from "../server/helpers/server.ts";
 import { MockMetricsClient } from "./mock-metrics-client.ts";
 
