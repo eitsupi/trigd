@@ -1,4 +1,4 @@
-import { normalize, resolve } from "@std/path";
+import { normalize, resolve } from "jsr:@std/path@1";
 
 /**
  * Serve static files from a directory.

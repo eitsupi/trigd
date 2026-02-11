@@ -1,4 +1,4 @@
-import { join, dirname } from "@std/path";
+import { join, dirname } from "jsr:@std/path@1";
 
 const DISCOVERY_FILENAME = "trigd-discovery.json";
 

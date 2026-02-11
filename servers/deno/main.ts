@@ -1,5 +1,5 @@
-import { parseArgs } from "@std/cli/parse-args";
-import { dirname, fromFileUrl, join } from "@std/path";
+import { parseArgs } from "jsr:@std/cli@1/parse-args";
+import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
 import { Hub } from "./hub.ts";
 import { RSession } from "./r_session.ts";
 import { writeDiscovery, removeDiscovery } from "./discovery.ts";
