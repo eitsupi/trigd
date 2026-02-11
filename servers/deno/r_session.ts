@@ -11,6 +11,8 @@ export class RSession {
   private conn: Deno.Conn;
   private hub: Hub;
   private encoder = new TextEncoder();
+  /** Promise chain that serialises writes so they never interleave. */
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor(conn: Deno.Conn, hub: Hub) {
     sessionCounter++;
@@ -20,10 +22,13 @@ export class RSession {
   }
 
   /** Send a message string to R, followed by a newline. */
-  send(data: string): void {
+  send(data: string): Promise<void> {
     const bytes = this.encoder.encode(data + "\n");
-    // Deno.Conn.write may not write all bytes at once
-    writeAll(this.conn, bytes);
+    const p = this.writeQueue.then(() => writeAll(this.conn, bytes));
+    // Keep the chain going even if a write fails, so subsequent
+    // sends don't wait on a rejected promise forever.
+    this.writeQueue = p.catch(() => {});
+    return p;
   }
 
   /** Close the underlying connection. */

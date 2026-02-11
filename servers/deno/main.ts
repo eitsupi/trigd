@@ -60,11 +60,9 @@ async function main(): Promise<void> {
   // Accept R connections (runs until listener is closed)
   acceptLoop(rListener, hub, activeConnections);
 
-  // Write discovery file and print readiness
-  let discoveryPaths: string[] = [];
-  writeDiscovery(socketPath, httpPort).then((paths) => {
-    discoveryPaths = paths;
-  });
+  // Write discovery file before announcing readiness so clients can
+  // find the socket immediately after parsing the readiness message.
+  const discoveryPaths = await writeDiscovery(socketPath, httpPort);
 
   // Print readiness message to stdout (parsed by test infrastructure)
   console.log("trigd server ready");
@@ -72,38 +70,35 @@ async function main(): Promise<void> {
   console.log(`  HTTP:      http://127.0.0.1:${httpPort}/`);
 
   // Wait for shutdown signal
-  const signalPromise = Promise.race([
+  const sig = await Promise.race([
     signalOnce("SIGINT"),
     signalOnce("SIGTERM"),
   ]);
 
-  signalPromise.then(async (sig) => {
-    console.error(`received signal ${sig}, shutting down...`);
+  console.error(`received signal ${sig}, shutting down...`);
 
-    // 1. Close R listener (stop accepting new connections)
-    rListener.close();
+  // 1. Close R listener (stop accepting new connections)
+  rListener.close();
 
-    // 2. Shutdown HTTP server
-    await httpServer.shutdown();
+  // 2. Shutdown HTTP server
+  await httpServer.shutdown();
 
-    // 3. Close hub (close all connections)
-    hub.close();
+  // 3. Close hub (close all connections)
+  hub.close();
 
-    // 4. Wait for active connections with timeout
-    await Promise.race([
-      Promise.allSettled(activeConnections),
-      new Promise((r) => setTimeout(r, 5000)),
-    ]);
+  // 4. Wait for active connections with timeout
+  await Promise.race([
+    Promise.allSettled(activeConnections),
+    new Promise((r) => setTimeout(r, 5000)),
+  ]);
 
-    // 5. Cleanup discovery and socket files
-    await removeDiscovery(discoveryPaths);
-    try {
-      await Deno.remove(socketPath);
-    } catch { /* ignore */ }
+  // 5. Cleanup discovery and socket files
+  await removeDiscovery(discoveryPaths);
+  try {
+    await Deno.remove(socketPath);
+  } catch { /* ignore */ }
 
-    console.error("shutdown complete");
-    Deno.exit(0);
-  });
+  console.error("shutdown complete");
 }
 
 /**

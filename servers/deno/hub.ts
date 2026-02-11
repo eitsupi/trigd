@@ -54,13 +54,11 @@ export class Hub {
   /** Broadcast a message string to all connected R sessions. */
   broadcastToR(data: string): void {
     for (const session of this.sessions.values()) {
-      try {
-        session.send(data);
-      } catch (e) {
+      session.send(data).catch((e) => {
         console.error(
           `failed to send to R session ${session.id}: ${e}`,
         );
-      }
+      });
     }
   }
 
@@ -118,6 +116,11 @@ export class Hub {
       return;
     }
 
+    if (typeof id !== "number" || !Number.isFinite(id)) {
+      console.error("metrics request has invalid id");
+      return;
+    }
+
     // No browsers connected → immediately send zero-value fallback
     if (this.clients.size === 0) {
       const fallback = JSON.stringify({
@@ -127,13 +130,11 @@ export class Hub {
         ascent: 0,
         descent: 0,
       });
-      try {
-        session.send(fallback);
-      } catch (e) {
+      session.send(fallback).catch((e) => {
         console.error(
           `failed to send metrics fallback to R session ${session.id}: ${e}`,
         );
-      }
+      });
       return;
     }
 
@@ -156,13 +157,11 @@ export class Hub {
         });
         const target = this.sessions.get(session.id);
         if (target) {
-          try {
-            target.send(fallback);
-          } catch (e) {
+          target.send(fallback).catch((e) => {
             console.error(
               `failed to send metrics fallback to R session ${session.id}: ${e}`,
             );
-          }
+          });
         }
         if (this.verbose) {
           console.error(
@@ -186,6 +185,10 @@ export class Hub {
       return;
     }
 
+    if (typeof id !== "number" || !Number.isFinite(id)) {
+      return;
+    }
+
     const sessionId = this.metricsRouting.get(id);
     if (sessionId === undefined) {
       // Already timed out or duplicate
@@ -195,13 +198,11 @@ export class Hub {
 
     const session = this.sessions.get(sessionId);
     if (session) {
-      try {
-        session.send(line);
-      } catch (e) {
+      session.send(line).catch((e) => {
         console.error(
           `failed to send metrics response to R session ${sessionId}: ${e}`,
         );
-      }
+      });
     }
   }
 
