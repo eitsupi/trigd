@@ -4,7 +4,7 @@
     "@std/async": "jsr:@std/async@^1",
     "@std/cli": "jsr:@std/cli@*",
     "@std/path": "jsr:@std/path@^1",
-    "@astral/astral": "jsr:@astral/astral@^0.4"
+    "@astral/astral": "jsr:@astral/astral@^0.5"
   },
   "tasks": {
     "test": "deno test --allow-all server/tests/",
