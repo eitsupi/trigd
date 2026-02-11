@@ -1,6 +1,5 @@
 #include "display_list.h"
 #include "color.h"
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -105,7 +104,8 @@ void page_serialize_frame(trigd_page_t *p, const char *session_id, json_writer_t
     jw_obj_end(out);
 
     jw_key(out, "ops");
-    if (incremental && p->last_flush_offset > 1) {
+    if (incremental && p->last_flush_offset > 1 &&
+        p->last_flush_offset < p->jw.len) {
         /* Delta encoding: send only ops added since last flush */
         size_t arr_end = p->jw.len - 1;  /* exclude trailing ']' */
         const char *delta = p->jw.buf + p->last_flush_offset;
