@@ -31,7 +31,7 @@ static void cb_deactivate(const pDevDesc dd) { (void)dd; }
 static void cb_newPage(const pGEcontext gc, pDevDesc dd) {
     trigd_state_t *st = get_state(dd);
 
-    if (st->page_count > 0 && st->page.op_count > 0 && !st->replaying) {
+    if (st->page_count > 0 && st->page.op_count > st->last_flushed_ops && !st->replaying) {
         flush_frame(st, 0);
     }
 
@@ -418,9 +418,13 @@ static void cb_mode(int mode, pDevDesc dd) {
 static int cb_holdflush(pDevDesc dd, int level) {
     trigd_state_t *st = get_state(dd);
     int old = st->hold_level;
-    st->hold_level = level > 0 ? level : 0;
-    /* When transitioning from held to flushed, send accumulated frame. */
-    if (old > 0 && level == 0) {
+    /* R passes level as a delta: +1 = hold, -1 = flush, 0 = reset.
+     * dev.hold() passes 1, dev.flush() passes -1. */
+    int new_level = old + level;
+    if (new_level < 0) new_level = 0;
+    st->hold_level = new_level;
+    /* When transitioning from held to unheld, send accumulated frame. */
+    if (old > 0 && new_level == 0) {
         if (st->page.op_count > st->last_flushed_ops) {
             flush_frame(st, 0);
             st->last_flushed_ops = st->page.op_count;
