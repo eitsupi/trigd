@@ -3,13 +3,17 @@
     "@std/assert": "jsr:@std/assert@^1",
     "@std/async": "jsr:@std/async@^1",
     "@std/cli": "jsr:@std/cli@*",
-    "@std/path": "jsr:@std/path@^1"
+    "@std/path": "jsr:@std/path@^1",
+    "@astral/astral": "jsr:@astral/astral@^0.4"
   },
   "tasks": {
     "test": "deno test --allow-all server/tests/",
     "test:verbose": "deno test --allow-all server/tests/ -- --verbose",
     "build-and-test": "deno run --allow-all server/run.ts",
     "test:go": "deno run --allow-all server/run.ts --server=go",
-    "test:deno": "deno run --allow-all server/run.ts --server=deno"
+    "test:deno": "deno run --allow-all server/run.ts --server=deno",
+    "e2e": "deno run --allow-all e2e/run.ts",
+    "e2e:go": "deno run --allow-all e2e/run.ts --server=go",
+    "e2e:deno": "deno run --allow-all e2e/run.ts --server=deno"
   }
 }

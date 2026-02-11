@@ -1,0 +1,97 @@
+import { assertEquals } from "@std/assert";
+import { TrigdServer } from "../../server/helpers/server.ts";
+import { RClient } from "../../server/helpers/r_client.ts";
+import { BrowserClient } from "../../server/helpers/browser_client.ts";
+import { E2EBrowser, canvasHasContent, canvasDimensions } from "../helpers/browser.ts";
+import { delay } from "@std/async";
+import type { ResizeMessage } from "../../server/helpers/types.ts";
+
+Deno.test("E2E: resize triggers canvas re-render", async (t) => {
+  const server = new TrigdServer();
+  const rClient = new RClient();
+  const e2e = new E2EBrowser();
+  // Extra WS client to send resize messages (CDP setViewportSize doesn't
+  // trigger ResizeObserver in headless Chrome).
+  const resizeSender = new BrowserClient();
+
+  try {
+    await server.start();
+    await rClient.connect(server.socketPath);
+    await e2e.launch();
+
+    const page = await e2e.newPage(server.httpBaseUrl);
+    await resizeSender.connect(server.wsUrl);
+
+    // The real browser sends resize on connect. Read it so R session is registered.
+    await rClient.readMessage<ResizeMessage>();
+
+    // Send two frames to establish a plot history baseline
+    await rClient.sendFrame({
+      ops: [{ op: "rect", x0: 0, y0: 0, x1: 400, y1: 300, gc: { fill: "#3366cc" } }],
+      device: { width: 400, height: 300, bg: "#ffffff" },
+    });
+    await delay(300);
+    await rClient.sendFrame({
+      ops: [{ op: "circle", x: 200, y: 150, r: 50, gc: { fill: "#33cc66" } }],
+      device: { width: 400, height: 300, bg: "#ffffff" },
+    });
+    await delay(500);
+
+    const dimsBefore = await canvasDimensions(page);
+    const countBefore = await page.evaluate(
+      `document.getElementById('plot-info').textContent`,
+    ) as string;
+    assertEquals(countBefore, "2 / 2");
+
+    await t.step("resize message reaches R", async () => {
+      // Send resize with unique dimensions so we can identify it
+      resizeSender.sendResize(1234, 5678);
+
+      // Read messages until we find our specific resize (skip any buffered ones)
+      let msg: ResizeMessage;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        msg = await rClient.readMessage<ResizeMessage>(3000);
+        if (msg.type === "resize" && msg.width === 1234 && msg.height === 5678) {
+          break;
+        }
+      }
+      assertEquals(msg!.width, 1234);
+      assertEquals(msg!.height, 5678);
+    });
+
+    await t.step("R frame after resize re-renders with new dimensions", async () => {
+      // Change viewport so the canvas has room for the larger plot
+      await page.setViewportSize({ width: 1024, height: 768 });
+
+      // R responds with a frame at the new size
+      await rClient.sendFrame({
+        ops: [{ op: "rect", x0: 0, y0: 0, x1: 1024, y1: 768, gc: { fill: "#cc3366" } }],
+        device: { width: 1024, height: 768, bg: "#ffffff" },
+      });
+      await delay(500);
+
+      const hasContent = await canvasHasContent(page);
+      assertEquals(hasContent, true);
+
+      const dimsAfter = await canvasDimensions(page);
+      const changed = dimsAfter.width !== dimsBefore.width || dimsAfter.height !== dimsBefore.height;
+      assertEquals(changed, true, `Canvas dims should change: ${JSON.stringify(dimsBefore)} → ${JSON.stringify(dimsAfter)}`);
+    });
+
+    await t.step("resize replaces latest plot (no extra history entry)", async () => {
+      const countAfter = await page.evaluate(
+        `document.getElementById('plot-info').textContent`,
+      ) as string;
+      assertEquals(countAfter, countBefore, "resize frame should not add a new history entry");
+    });
+
+  } finally {
+    resizeSender.close();
+    await e2e.close();
+    rClient.close();
+    await delay(100);
+    await server.shutdown();
+    server.cleanup();
+  }
+});
