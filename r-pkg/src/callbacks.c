@@ -418,8 +418,7 @@ static void cb_mode(int mode, pDevDesc dd) {
 static int cb_holdflush(pDevDesc dd, int level) {
     trigd_state_t *st = get_state(dd);
     int old = st->hold_level;
-    /* R passes level as a delta: +1 = hold, -1 = flush, 0 = reset.
-     * dev.hold() passes 1, dev.flush() passes -1. */
+    /* R passes level as a delta: dev.hold() passes +1, dev.flush() passes -1. */
     int new_level = old + level;
     if (new_level < 0) new_level = 0;
     st->hold_level = new_level;
