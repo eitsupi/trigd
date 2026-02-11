@@ -165,6 +165,21 @@ func (h *Hub) handleMetricsRequest(session *RSession, data []byte) {
 		return
 	}
 
+	// If no browsers are connected, immediately send zero-value fallback.
+	// R treats zero-value responses the same as a timeout: it falls through
+	// to local font metric approximations, but without the 500ms poll wait.
+	h.mu.RLock()
+	nClients := len(h.clients)
+	h.mu.RUnlock()
+
+	if nClients == 0 {
+		fallback := fmt.Sprintf(`{"type":"metrics_response","id":%d,"width":0,"ascent":0,"descent":0}`, msg.ID)
+		if err := session.Send([]byte(fallback)); err != nil {
+			log.Printf("failed to send metrics fallback to R session %s: %v", session.id, err)
+		}
+		return
+	}
+
 	// Store routing: requestID -> sessionID
 	h.metricsRouting.Store(msg.ID, session.id)
 
