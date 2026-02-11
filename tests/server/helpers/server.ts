@@ -25,15 +25,23 @@ export class TrigdServer {
 
   /** Start the server and wait for it to be ready. */
   async start(): Promise<void> {
-    const bin =
-      Deno.env.get("TRIGD_SERVER_BIN") ??
-      join(
+    const binEnv = Deno.env.get("TRIGD_SERVER_BIN");
+    let bin: string;
+    let prefixArgs: string[];
+    if (binEnv) {
+      const parts = binEnv.split(/\s+/);
+      bin = parts[0];
+      prefixArgs = parts.slice(1);
+    } else {
+      bin = join(
         dirname(fromFileUrl(import.meta.url)),
         "..", "..", "..", "servers", "go", "trigd",
       );
+      prefixArgs = [];
+    }
 
     const cmd = new Deno.Command(bin, {
-      args: ["-socket", this.socketPath, "-http", "127.0.0.1:0", "-v"],
+      args: [...prefixArgs, "-socket", this.socketPath, "-http", "127.0.0.1:0", "-v"],
       stdout: "piped",
       stderr: "piped",
       env: { TMPDIR: this.tmpDir },
