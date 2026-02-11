@@ -27,9 +27,16 @@ async function main(): Promise<void> {
 
   const verbose = args.v;
 
-  // Resolve web directory for static files
-  const webDir = args.web ||
-    join(dirname(fromFileUrl(import.meta.url)), "..", "go", "web");
+  // Resolve web directory for static files.
+  // When running from a remote URL, fromFileUrl is unavailable so --web is required.
+  let webDir = args.web;
+  if (!webDir) {
+    if (import.meta.url.startsWith("file://")) {
+      webDir = join(dirname(fromFileUrl(import.meta.url)), "..", "go", "web");
+    } else {
+      webDir = "";
+    }
+  }
 
   const hub = new Hub();
   hub.verbose = verbose;
@@ -60,6 +67,9 @@ async function main(): Promise<void> {
       const url = new URL(req.url);
       if (url.pathname === "/ws") {
         return handleWebSocket(req, hub);
+      }
+      if (!webDir) {
+        return new Response("no --web directory configured", { status: 404 });
       }
       return serveStaticFile(req, webDir);
     },
