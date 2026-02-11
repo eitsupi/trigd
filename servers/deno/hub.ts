@@ -65,6 +65,7 @@ export class Hub {
   /**
    * Broadcast a resize message to all R sessions, marking each so the
    * next frame can be tagged as a resize response.
+   * Duplicate resizes with identical dimensions are silently dropped.
    */
   broadcastResizeToR(data: string): void {
     let dims: { width: number; height: number } | null = null;
@@ -77,15 +78,17 @@ export class Hub {
     } catch { /* malformed — skip dedup, always arm */ }
 
     for (const session of this.sessions.values()) {
-      // Only arm the flag when dimensions actually changed, so
-      // duplicate resizes (ws.onopen + ResizeObserver) don't
-      // cause an extra frame to be tagged.
+      // When dimensions haven't changed, skip entirely — don't forward
+      // to R and don't arm the flag.  This prevents duplicate resizes
+      // (ws.onopen + ResizeObserver with same dims) from generating
+      // untagged frames that corrupt plot history.
       if (dims) {
-        if (dims.width !== session.lastResizeW || dims.height !== session.lastResizeH) {
-          session.resizePending = true;
-          session.lastResizeW = dims.width;
-          session.lastResizeH = dims.height;
+        if (dims.width === session.lastResizeW && dims.height === session.lastResizeH) {
+          continue;
         }
+        session.resizePending = true;
+        session.lastResizeW = dims.width;
+        session.lastResizeH = dims.height;
       } else {
         session.resizePending = true;
       }

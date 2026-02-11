@@ -113,9 +113,8 @@ func (h *Hub) BroadcastToR(data []byte) {
 
 // BroadcastResizeToR sends a resize message to all R sessions,
 // marking each session so the next frame can be tagged as a resize response.
-// Duplicate resizes with identical dimensions are forwarded to R but do not
-// re-arm the flag, preventing browser-side ws.onopen + ResizeObserver
-// duplicates from tagging an extra frame.
+// Duplicate resizes with identical dimensions are silently dropped — R
+// doesn't need to re-render and no frame should be generated.
 func (h *Hub) BroadcastResizeToR(data []byte) {
 	var dims struct {
 		Width  int32 `json:"width"`
@@ -126,9 +125,10 @@ func (h *Hub) BroadcastResizeToR(data []byte) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for _, session := range h.sessions {
-		// Only arm when dimensions actually changed, so duplicate resizes
-		// (ws.onopen + ResizeObserver with same dims) don't cause extra
-		// frames to be tagged.
+		// When dimensions haven't changed, skip entirely — don't forward
+		// to R and don't arm the flag.  This prevents duplicate resizes
+		// (ws.onopen + ResizeObserver with same dims) from generating
+		// untagged frames that corrupt plot history.
 		//
 		// Note: The load-compare-store on per-session atomics is not
 		// atomic as a unit; concurrent calls from multiple browser
@@ -138,11 +138,12 @@ func (h *Hub) BroadcastResizeToR(data []byte) {
 		if parsed {
 			oldW := session.lastResizeW.Load()
 			oldH := session.lastResizeH.Load()
-			if dims.Width != oldW || dims.Height != oldH {
-				session.resizePending.Store(true)
-				session.lastResizeW.Store(dims.Width)
-				session.lastResizeH.Store(dims.Height)
+			if dims.Width == oldW && dims.Height == oldH {
+				continue
 			}
+			session.resizePending.Store(true)
+			session.lastResizeW.Store(dims.Width)
+			session.lastResizeH.Store(dims.Height)
 		} else {
 			session.resizePending.Store(true)
 		}

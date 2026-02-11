@@ -422,7 +422,13 @@ function applyGc(ctx, gc) {
     }
 }
 
+// Generation counter to detect superseded renders — incremented each
+// time replay() starts.  If a newer render begins while an async op
+// (raster image decode) is pending, the older render aborts.
+var _renderGen = 0;
+
 async function replay(canvas, container, plot) {
+    var gen = ++_renderGen;
     var ctx = canvas.getContext('2d');
     var dpr = window.devicePixelRatio || 1;
     var containerW = container.clientWidth;
@@ -457,6 +463,9 @@ async function replay(canvas, container, plot) {
     var ops = plot.ops;
     for (var i = 0; i < ops.length; i++) {
         await renderOp(ctx, ops[i], plotH);
+        // Abort if a newer render has started (prevents overlap from
+        // async raster image decoding interleaving with a new render).
+        if (_renderGen !== gen) return;
     }
 
     ctx.restore();
