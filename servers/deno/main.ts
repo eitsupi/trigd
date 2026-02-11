@@ -1,10 +1,11 @@
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
-import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import { join } from "jsr:@std/path@1";
 import { Hub } from "./hub.ts";
 import { RSession } from "./r_session.ts";
 import { writeDiscovery, removeDiscovery } from "./discovery.ts";
 import { handleWebSocket } from "./websocket.ts";
 import { serveStaticFile } from "./static.ts";
+import { assets } from "./web_assets.ts";
 
 async function main(): Promise<void> {
   // Go's flag package treats -socket and --socket identically.
@@ -27,16 +28,10 @@ async function main(): Promise<void> {
 
   const verbose = args.v;
 
-  // Resolve web directory for static files.
-  // When running from a remote URL, fromFileUrl is unavailable so --web is required.
-  let webDir = args.web;
-  if (!webDir) {
-    if (import.meta.url.startsWith("file://")) {
-      webDir = join(dirname(fromFileUrl(import.meta.url)), "..", "go", "web");
-    } else {
-      webDir = "";
-    }
-  }
+  // Web directory for static files (optional, for development).
+  // By default, embedded assets from web_assets.ts are served.
+  // Use --web <dir> to serve from a local directory instead.
+  const webDir = args.web;
 
   const hub = new Hub();
   hub.verbose = verbose;
@@ -68,10 +63,18 @@ async function main(): Promise<void> {
       if (url.pathname === "/ws") {
         return handleWebSocket(req, hub);
       }
-      if (!webDir) {
-        return new Response("no --web directory configured", { status: 404 });
+      if (webDir) {
+        return serveStaticFile(req, webDir);
       }
-      return serveStaticFile(req, webDir);
+      // Serve from embedded assets
+      const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
+      const asset = assets[pathname];
+      if (!asset) {
+        return new Response("not found", { status: 404 });
+      }
+      return new Response(asset.body, {
+        headers: { "content-type": asset.type },
+      });
     },
   );
   const httpPort = httpServer.addr.port;
