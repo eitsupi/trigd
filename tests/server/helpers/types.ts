@@ -19,7 +19,16 @@ export interface ResizeMessage {
 export interface MetricsRequestMessage {
   type: "metrics_request";
   id: number;
-  [key: string]: unknown;
+  kind: "strWidth" | "metricInfo";
+  str?: string;
+  c?: number;
+  gc?: {
+    font?: {
+      family?: string;
+      face?: number;
+      size?: number;
+    };
+  };
 }
 
 export interface MetricsResponseMessage {

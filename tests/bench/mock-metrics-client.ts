@@ -77,14 +77,11 @@ export class MockMetricsClient {
 
   #handleMetrics(msg: MetricsRequestMessage): void {
     this.#metricsRequests++;
-    const gc = (msg as Record<string, unknown>).gc as
-      | { font?: { size?: number } }
-      | undefined;
-    const size = gc?.font?.size ?? 12;
+    const size = msg.gc?.font?.size ?? 12;
 
-    if ((msg as Record<string, unknown>).kind === "strWidth") {
+    if (msg.kind === "strWidth") {
       this.#strWidthRequests++;
-      const str = ((msg as Record<string, unknown>).str as string) ?? "";
+      const str = msg.str ?? "";
       this.#ws!.send(
         JSON.stringify({
           type: "metrics_response",
@@ -94,7 +91,7 @@ export class MockMetricsClient {
           descent: 0,
         }),
       );
-    } else if ((msg as Record<string, unknown>).kind === "metricInfo") {
+    } else if (msg.kind === "metricInfo") {
       this.#metricInfoRequests++;
       this.#ws!.send(
         JSON.stringify({

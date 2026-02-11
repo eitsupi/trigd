@@ -42,8 +42,15 @@ export class RClient {
   }
 
   /** Send a metrics request. */
-  async sendMetricsRequest(id: number): Promise<void> {
-    const msg: MetricsRequestMessage = { type: "metrics_request", id };
+  async sendMetricsRequest(id: number, kind: "strWidth" | "metricInfo" = "strWidth"): Promise<void> {
+    const msg: MetricsRequestMessage = {
+      type: "metrics_request",
+      id,
+      kind,
+      str: kind === "strWidth" ? "test" : undefined,
+      c: kind === "metricInfo" ? 77 : undefined,
+      gc: { font: { family: "sans", face: 1, size: 12 } },
+    };
     await this.send(msg);
   }
 

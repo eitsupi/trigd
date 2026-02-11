@@ -73,7 +73,7 @@ export class BrowserClient {
     timeoutMs = 5000,
   ): Promise<T> {
     return this.waitForMessage<T>(
-      (msg) => (msg as Record<string, unknown>).type === type,
+      (msg) => msg.type === type,
       timeoutMs,
     );
   }
