@@ -1,8 +1,10 @@
 import { parseArgs } from "@std/cli/parse-args";
-import { join } from "@std/path";
+import { dirname, fromFileUrl, join } from "@std/path";
 import { Hub } from "./hub.ts";
 import { RSession } from "./r_session.ts";
 import { writeDiscovery, removeDiscovery } from "./discovery.ts";
+import { handleWebSocket } from "./websocket.ts";
+import { serveStaticFile } from "./static.ts";
 
 async function main(): Promise<void> {
   // Go's flag package treats -socket and --socket identically.
@@ -13,16 +15,21 @@ async function main(): Promise<void> {
   );
 
   const args = parseArgs(rawArgs, {
-    string: ["socket", "http"],
+    string: ["socket", "http", "web"],
     boolean: ["v"],
     default: {
       socket: "",
       http: "127.0.0.1:0",
+      web: "",
       v: false,
     },
   });
 
   const verbose = args.v;
+
+  // Resolve web directory for static files
+  const webDir = args.web ||
+    join(dirname(fromFileUrl(import.meta.url)), "..", "go", "web");
 
   const hub = new Hub();
   hub.verbose = verbose;
@@ -49,7 +56,13 @@ async function main(): Promise<void> {
   const [httpHost, httpPortStr] = splitHostPort(args.http);
   const httpServer = Deno.serve(
     { hostname: httpHost, port: parseInt(httpPortStr), onListen: () => {} },
-    (_req) => new Response("not found", { status: 404 }),
+    (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/ws") {
+        return handleWebSocket(req, hub);
+      }
+      return serveStaticFile(req, webDir);
+    },
   );
   const httpPort = httpServer.addr.port;
   console.error(`HTTP server: http://127.0.0.1:${httpPort}/`);
