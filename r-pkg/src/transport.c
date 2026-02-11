@@ -52,6 +52,7 @@ void transport_init(trigd_transport_t *t) {
     t->fd = (int)SOCK_INVALID;
     t->socket_path[0] = '\0';
     t->connected = 0;
+    t->readbuf_len = 0;
 }
 
 static int discover_socket_path(char *out, size_t outsize, int skip_env) {
@@ -225,6 +226,8 @@ int transport_send(trigd_transport_t *t, const char *data, size_t len) {
 
 int transport_has_data(trigd_transport_t *t) {
     if (!t->connected) return 0;
+    /* A complete line already buffered? */
+    if (memchr(t->readbuf, '\n', t->readbuf_len) != NULL) return 1;
     sock_t s = (sock_t)t->fd;
 #ifndef _WIN32
     struct pollfd pfd;
@@ -240,11 +243,36 @@ int transport_has_data(trigd_transport_t *t) {
 #endif
 }
 
+/* Extract one newline-terminated line from the read buffer.
+ * Returns line length (>= 0) on success, -1 if no complete line. */
+static int readbuf_extract_line(trigd_transport_t *t, char *buf, size_t bufsize) {
+    char *nl = (char *)memchr(t->readbuf, '\n', t->readbuf_len);
+    if (!nl) return -1;
+
+    size_t linelen = (size_t)(nl - t->readbuf);
+    size_t copylen = linelen < bufsize - 1 ? linelen : bufsize - 1;
+    memcpy(buf, t->readbuf, copylen);
+    buf[copylen] = '\0';
+
+    /* Consume the line + newline from the buffer */
+    size_t consumed = linelen + 1;
+    t->readbuf_len -= consumed;
+    if (t->readbuf_len > 0) {
+        memmove(t->readbuf, t->readbuf + consumed, t->readbuf_len);
+    }
+    return (int)copylen;
+}
+
 int transport_recv_line(trigd_transport_t *t, char *buf, size_t bufsize, int timeout_ms) {
     if (!t->connected) return -1;
 
+    /* Fast path: a complete line is already buffered */
+    int n = readbuf_extract_line(t, buf, bufsize);
+    if (n >= 0) return n;
+
     sock_t s = (sock_t)t->fd;
 
+    /* Wait for initial data with the caller's timeout */
 #ifndef _WIN32
     struct pollfd pfd;
     pfd.fd = s;
@@ -262,16 +290,28 @@ int transport_recv_line(trigd_transport_t *t, char *buf, size_t bufsize, int tim
     if (sr <= 0) return -1;
 #endif
 
-    size_t pos = 0;
-    while (pos < bufsize - 1) {
-        char c;
-        int n = (int)recv(s, &c, 1, 0);
-        if (n <= 0) { t->connected = 0; return -1; }
-        if (c == '\n') break;
-        buf[pos++] = c;
+    /* Bulk-read until we have a complete line */
+    for (;;) {
+        size_t space = sizeof(t->readbuf) - t->readbuf_len;
+        if (space == 0) {
+            /* Buffer full without newline — return what we have */
+            size_t copylen = bufsize - 1 < t->readbuf_len ? bufsize - 1 : t->readbuf_len;
+            memcpy(buf, t->readbuf, copylen);
+            buf[copylen] = '\0';
+            t->readbuf_len = 0;
+            return (int)copylen;
+        }
+
+        int r = (int)recv(s, t->readbuf + t->readbuf_len, (int)space, 0);
+        if (r <= 0) {
+            t->connected = 0;
+            return -1;
+        }
+        t->readbuf_len += (size_t)r;
+
+        n = readbuf_extract_line(t, buf, bufsize);
+        if (n >= 0) return n;
     }
-    buf[pos] = '\0';
-    return (int)pos;
 }
 
 void transport_close(trigd_transport_t *t) {
@@ -280,6 +320,7 @@ void transport_close(trigd_transport_t *t) {
         t->fd = (int)SOCK_INVALID;
     }
     t->connected = 0;
+    t->readbuf_len = 0;
 }
 
 int transport_reconnect(trigd_transport_t *t) {

@@ -7,6 +7,8 @@ typedef struct {
     int fd;
     char socket_path[512];  /* Unix path or "tcp:PORT" on Windows */
     int connected;
+    char readbuf[4096];     /* persistent read buffer for bulk recv */
+    size_t readbuf_len;     /* valid bytes in readbuf */
 } trigd_transport_t;
 
 void transport_init(trigd_transport_t *t);
