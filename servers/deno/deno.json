@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "@std/cli": "jsr:@std/cli@1",
+    "@std/path": "jsr:@std/path@1"
+  },
+  "tasks": {
+    "start": "deno run --allow-all main.ts",
+    "dev": "deno run --allow-all --watch main.ts"
+  }
+}
