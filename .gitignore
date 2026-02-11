@@ -5,8 +5,8 @@
 *.dll
 *.tar.gz
 
-# Go server binary
-server/trigd
+# Server binaries
+servers/go/trigd
 
 # R package build
 r-pkg/src/*.o

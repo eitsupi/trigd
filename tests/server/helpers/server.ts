@@ -29,7 +29,7 @@ export class TrigdServer {
       Deno.env.get("TRIGD_SERVER_BIN") ??
       join(
         dirname(fromFileUrl(import.meta.url)),
-        "..", "..", "..", "server", "trigd",
+        "..", "..", "..", "servers", "go", "trigd",
       );
 
     const cmd = new Deno.Command(bin, {

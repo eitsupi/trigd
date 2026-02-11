@@ -5,7 +5,7 @@ Integration tests and benchmarks for the trigd server.
 ## Prerequisites
 
 - [Deno](https://deno.land/) v2+
-- [Go](https://go.dev/) 1.22+ (for building the server)
+- [Go](https://go.dev/) 1.22+ (for building the Go server)
 - R with the `trigd` package installed (for benchmarks only)
 
 ## Directory structure
@@ -31,7 +31,7 @@ All commands should be run from the `tests/` directory.
 # Run integration tests (assumes server binary is already built)
 deno task test
 
-# Build the Go server then run tests
+# Build the server then run tests
 deno task build-and-test
 
 # Verbose output
@@ -50,7 +50,7 @@ TRIGD_SERVER_BIN=/path/to/trigd deno task test
 # Full benchmark: build server, connect mock client, run R benchmarks
 deno run --allow-all bench/run.ts
 
-# Skip Go build (use existing binary)
+# Skip build (use existing binary)
 deno run --allow-all bench/run.ts --skip-build
 
 # Run without mock client (tests timeout fallback path)

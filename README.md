@@ -13,8 +13,8 @@ jgd's original architecture couples the renderer to a VS Code extension: a
 Node.js socket server runs inside the extension host, and plots are displayed
 in a VS Code webview panel. This means jgd can only be used from VS Code.
 
-trigd replaces the VS Code extension with a standalone **Go server** and a
-**browser frontend**. The Go server bridges R (Unix socket, NDJSON) and the
+trigd replaces the VS Code extension with a standalone **server** and a
+**browser frontend**. The server bridges R (Unix socket, NDJSON) and the
 browser (HTTP + WebSocket), so plots can be viewed in any web browser
 regardless of which editor or terminal is running R. This makes the device
 usable from Neovim, Emacs, a plain terminal, or any other environment.
@@ -23,10 +23,10 @@ usable from Neovim, Emacs, a plain terminal, or any other environment.
 
 | | jgd | trigd |
 |---|---|---|
-| Renderer host | VS Code extension (Node.js) | Standalone Go server |
+| Renderer host | VS Code extension (Node.js) | Standalone server |
 | Viewer | VS Code webview panel | Any web browser |
 | Editor dependency | VS Code required | None |
-| Server binary | None (embedded in extension) | Single Go binary |
+| Server binary | None (embedded in extension) | Single binary (`servers/go/`) |
 | Browser frontend | N/A | Embedded static assets served over HTTP |
 
 The R package (pure C, zero dependencies) is largely shared between the two
@@ -46,7 +46,7 @@ projects.
 └──────────────────────────────────────────────────┘  │
      Unix domain socket or TCP (NDJSON)               │
 ┌──────────────────────────────────────────────────┐  │
-│  Go server (trigd binary)                        │◄─┘
+│  trigd server                                    │◄─┘
 │                                                  │
 │  R socket ←→ Hub ←→ WebSocket                    │
 │                ↓                                 │
@@ -63,7 +63,7 @@ projects.
 The R package hooks into R's graphics engine via the standard `DevDesc`
 callback interface. Every drawing primitive — lines, rectangles, circles,
 polygons, text, paths, raster images, clipping regions — is captured as a JSON
-object and streamed over the socket. The Go server relays these frames to
+object and streamed over the socket. The server relays these frames to
 connected browsers via WebSocket. The browser replays the operations on a
 Canvas2D surface.
 
@@ -103,7 +103,7 @@ via parley, eliminating the browser dependency.
 ## Prerequisites
 
 - **R** (≥ 4.0)
-- **Go** (≥ 1.22) — to build the server
+- **Go** (≥ 1.22) — to build the Go server
 - macOS, Linux, or Windows (TCP transport on Windows)
 
 ## Installation
@@ -114,10 +114,10 @@ via parley, eliminating the browser dependency.
 pak::pak("./r-pkg")
 ```
 
-### Go server
+### Server (Go)
 
 ```bash
-cd server
+cd servers/go
 go build -o trigd .
 ```
 
@@ -128,7 +128,7 @@ This produces a single `trigd` binary.
 1. Start the server:
 
 ```bash
-./server/trigd
+./servers/go/trigd
 # trigd server ready
 #   R socket:  /tmp/trigd-XXXXXX.sock
 #   HTTP:      http://127.0.0.1:XXXXX/
@@ -155,9 +155,9 @@ ggplot(mtcars, aes(wt, mpg)) +
 
 ## Running tests
 
-The integration test suite uses [Deno](https://deno.land/) to exercise the Go
+The integration test suite uses [Deno](https://deno.land/) to exercise the
 server as a black box through its external interfaces (Unix socket, HTTP,
-WebSocket).
+WebSocket). See [`tests/README.md`](tests/README.md) for details.
 
 ```bash
 # Build the server and run all tests
@@ -165,7 +165,7 @@ cd tests/server
 deno run --allow-all run.ts
 
 # Or, if the server binary is already built:
-TRIGD_SERVER_BIN=../../server/trigd deno test --allow-all tests/
+TRIGD_SERVER_BIN=../../servers/go/trigd deno test --allow-all tests/
 ```
 
 ## Roadmap

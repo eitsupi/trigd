@@ -2,9 +2,9 @@
 import { join, dirname, fromFileUrl } from "jsr:@std/path";
 
 const scriptDir = dirname(fromFileUrl(import.meta.url));
-const serverDir = join(scriptDir, "..", "..", "server");
+const serverDir = join(scriptDir, "..", "..", "servers", "go");
 
-console.log("==> Building Go server...");
+console.log("==> Building server...");
 const build = new Deno.Command("go", {
   args: ["build", "-o", "trigd", "."],
   cwd: serverDir,

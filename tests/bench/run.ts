@@ -2,12 +2,12 @@
 /**
  * Benchmark orchestrator for trigd plot rendering performance.
  *
- * Builds the Go server, starts it, connects a mock metrics client,
+ * Builds the server, starts it, connects a mock metrics client,
  * runs R benchmarks, and reports results.
  *
  * Usage:
  *   deno run --allow-all run.ts
- *   deno run --allow-all run.ts --skip-build   # skip Go build
+ *   deno run --allow-all run.ts --skip-build   # skip server build
  *   deno run --allow-all run.ts --no-client     # run without mock client (timeout mode)
  */
 
@@ -17,7 +17,7 @@ import { MockMetricsClient } from "./mock-metrics-client.ts";
 
 const scriptDir = dirname(fromFileUrl(import.meta.url));
 const rootDir = join(scriptDir, "..", "..");
-const serverDir = join(rootDir, "server");
+const serverDir = join(rootDir, "servers", "go");
 
 const args = new Set(Deno.args);
 const skipBuild = args.has("--skip-build");
@@ -25,7 +25,7 @@ const noClient = args.has("--no-client");
 
 // --- Build ---
 if (!skipBuild) {
-  console.log("==> Building Go server...");
+  console.log("==> Building server...");
   const build = new Deno.Command("go", {
     args: ["build", "-o", "trigd", "."],
     cwd: serverDir,
