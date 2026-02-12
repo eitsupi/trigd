@@ -163,9 +163,8 @@ export class TrigdServer {
     }, 10_000);
 
     try {
-      const status = await this.#process.status;
-      // On SIGKILL, status.signal is set (non-graceful exit)
-      return !forceKilled && (status.success || status.signal !== "SIGKILL");
+      await this.#process.status;
+      return !forceKilled;
     } finally {
       clearTimeout(timeoutId);
     }
