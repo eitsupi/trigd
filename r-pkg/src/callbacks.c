@@ -52,6 +52,9 @@ static void cb_newPage(const pGEcontext gc, pDevDesc dd) {
 static void cb_close(pDevDesc dd) {
     trigd_state_t *st = get_state(dd);
 
+    /* Remove R input handler before closing the transport fd */
+    trigd_remove_input_handler(st);
+
     if (st->page.op_count > st->last_flushed_ops) {
         flush_frame(st, 0);
     }

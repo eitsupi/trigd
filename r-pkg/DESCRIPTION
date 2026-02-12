@@ -12,8 +12,6 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 NeedsCompilation: yes
-Suggests: later
-SystemRequirements: POSIX sockets (available on macOS, Linux; Windows support
-    planned)
+SystemRequirements: POSIX sockets (macOS, Linux) or TCP sockets (Windows)
 URL: https://github.com/eitsupi/trigd
 BugReports: https://github.com/eitsupi/trigd/issues

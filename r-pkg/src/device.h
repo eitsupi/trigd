@@ -20,6 +20,17 @@ typedef struct {
     int replaying;            /* guard against re-entry from GEplayDisplayList */
     double pending_w;         /* pending resize width in pixels, 0 = none */
     double pending_h;         /* pending resize height in pixels */
+#ifdef _WIN32
+    void *hwnd;               /* HWND for message-only window (resize polling) */
+    int timer_active;
+#else
+    void *input_handler;      /* InputHandler* for R event-loop resize polling */
+#endif
 } trigd_state_t;
+
+/* Register/remove the R input handler that watches the transport socket
+   for incoming resize messages.  Called from C_trigd (open) and cb_close. */
+void trigd_register_input_handler(trigd_state_t *st);
+void trigd_remove_input_handler(trigd_state_t *st);
 
 #endif
