@@ -16,11 +16,12 @@ async function main(): Promise<void> {
   );
 
   const args = parseArgs(rawArgs, {
-    string: ["socket", "http", "web"],
+    string: ["socket", "http", "tcp", "web"],
     boolean: ["v"],
     default: {
       socket: "",
       http: "127.0.0.1:0",
+      tcp: "",
       web: "",
       v: false,
     },
@@ -36,22 +37,39 @@ async function main(): Promise<void> {
   const hub = new Hub();
   hub.verbose = verbose;
 
-  // Resolve socket path
-  let socketPath = args.socket;
-  if (!socketPath) {
-    const token = new Uint8Array(8);
-    crypto.getRandomValues(token);
-    const hex = Array.from(token)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    socketPath = join(Deno.env.get("TMPDIR") || "/tmp", `trigd-${hex}.sock`);
+  const isWindows = Deno.build.os === "windows";
+  const tcpRequested = args.tcp !== "";
+  const tcpPort = tcpRequested ? (parseInt(args.tcp) || 0) : 0;
+  const useTcp = isWindows || tcpRequested;
+
+  let socketPath: string;
+  let rListener: Deno.Listener;
+
+  if (useTcp) {
+    // TCP listener for Windows or explicit --tcp flag
+    const listener = Deno.listen({
+      transport: "tcp",
+      hostname: "127.0.0.1",
+      port: tcpPort,
+    });
+    const addr = listener.addr as Deno.NetAddr;
+    socketPath = `tcp:${addr.port}`;
+    rListener = listener;
+  } else {
+    // Unix domain socket (Linux/macOS)
+    socketPath = args.socket;
+    if (!socketPath) {
+      const token = new Uint8Array(8);
+      crypto.getRandomValues(token);
+      const hex = Array.from(token)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      const tmpdir = Deno.env.get("TMPDIR") || "/tmp";
+      socketPath = join(tmpdir, `trigd-${hex}.sock`);
+    }
+    await cleanStaleSocket(socketPath);
+    rListener = Deno.listen({ transport: "unix", path: socketPath });
   }
-
-  // Clean up stale socket
-  await cleanStaleSocket(socketPath);
-
-  // Start R Unix socket listener
-  const rListener = Deno.listen({ transport: "unix", path: socketPath });
   console.error(`R listener: ${socketPath}`);
 
   // Start HTTP server (port 0 = auto-assign)
@@ -95,8 +113,10 @@ async function main(): Promise<void> {
   console.log(`  R socket:  ${socketPath}`);
   console.log(`  HTTP:      http://127.0.0.1:${httpPort}/`);
 
-  // Wait for shutdown signal
-  const sig = await waitForSignal("SIGINT", "SIGTERM");
+  // Wait for shutdown signal (Windows only supports SIGINT)
+  const sig = isWindows
+    ? await waitForSignal("SIGINT")
+    : await waitForSignal("SIGINT", "SIGTERM");
 
   console.error(`received signal ${sig}, shutting down...`);
 
@@ -117,15 +137,17 @@ async function main(): Promise<void> {
 
   // 5. Cleanup discovery and socket files
   await removeDiscovery(discoveryPaths);
-  try {
-    await Deno.remove(socketPath);
-  } catch { /* ignore */ }
+  if (!useTcp) {
+    try {
+      await Deno.remove(socketPath);
+    } catch { /* ignore */ }
+  }
 
   console.error("shutdown complete");
 }
 
 /**
- * Accept loop for Unix socket connections.
+ * Accept loop for R connections (Unix socket or TCP).
  * Spawns an RSession for each accepted connection.
  */
 async function acceptLoop(
@@ -135,9 +157,7 @@ async function acceptLoop(
 ): Promise<void> {
   for await (const conn of listener) {
     const session = new RSession(conn, hub);
-    console.error(
-      `R connection accepted: ${session.id} from unix socket`,
-    );
+    console.error(`R connection accepted: ${session.id}`);
     const done = session.run().finally(() => {
       activeConnections.delete(done);
     });

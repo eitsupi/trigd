@@ -6,8 +6,9 @@ import type { DiscoveryFile } from "./types.ts";
  * Each instance gets its own socket, HTTP port, and TMPDIR.
  */
 export class TrigdServer {
-  readonly socketPath: string;
+  socketPath: string;
   readonly tmpDir: string;
+  readonly useTcp: boolean;
 
   httpPort = 0;
   pid = 0;
@@ -15,12 +16,12 @@ export class TrigdServer {
   #process: Deno.ChildProcess | null = null;
   #stdout: ReadableStream<string> | null = null;
 
-  constructor() {
+  constructor(opts?: { tcp?: boolean }) {
     this.tmpDir = Deno.makeTempDirSync({ prefix: "trigd-test-" });
-    this.socketPath = join(
-      this.tmpDir,
-      `trigd-${crypto.randomUUID().slice(0, 8)}.sock`,
-    );
+    this.useTcp = opts?.tcp ?? false;
+    this.socketPath = this.useTcp
+      ? ""  // resolved after server starts
+      : join(this.tmpDir, `trigd-${crypto.randomUUID().slice(0, 8)}.sock`);
   }
 
   /** Start the server and wait for it to be ready. */
@@ -43,8 +44,16 @@ export class TrigdServer {
       prefixArgs = [];
     }
 
+    const serverArgs = [...prefixArgs];
+    if (this.useTcp) {
+      serverArgs.push("-tcp", "0");
+    } else {
+      serverArgs.push("-socket", this.socketPath);
+    }
+    serverArgs.push("-http", "127.0.0.1:0", "-v");
+
     const cmd = new Deno.Command(bin, {
-      args: [...prefixArgs, "-socket", this.socketPath, "-http", "127.0.0.1:0", "-v"],
+      args: serverArgs,
       stdout: "piped",
       stderr: "piped",
       env: { TMPDIR: this.tmpDir },
@@ -84,8 +93,12 @@ export class TrigdServer {
 
         for (const line of lines) {
           if (line.startsWith("trigd server ready")) {
-            // Parse HTTP port from subsequent line
             continue;
+          }
+          // Parse R socket path (needed for TCP mode where port is auto-assigned)
+          const socketMatch = line.match(/R socket:\s+(.+)/);
+          if (socketMatch) {
+            this.socketPath = socketMatch[1].trim();
           }
           const httpMatch = line.match(
             /HTTP:\s+http:\/\/127\.0\.0\.1:(\d+)/,

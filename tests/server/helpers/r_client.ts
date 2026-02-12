@@ -6,21 +6,30 @@ import type {
 } from "./types.ts";
 
 /**
- * Simulates an R session connecting to the server via Unix socket (NDJSON).
+ * Simulates an R session connecting to the server via Unix socket or TCP (NDJSON).
  */
 export class RClient {
-  #conn: Deno.UnixConn | null = null;
+  #conn: Deno.Conn | null = null;
   #reader: ReadableStreamDefaultReader<string> | null = null;
   #writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   #encoder = new TextEncoder();
   #buffer = "";
 
-  /** Connect to the server's Unix socket. */
+  /** Connect to the server's socket. Supports Unix path or "tcp:PORT" format. */
   async connect(socketPath: string): Promise<void> {
-    this.#conn = await Deno.connect({
-      transport: "unix",
-      path: socketPath,
-    }) as Deno.UnixConn;
+    if (socketPath.startsWith("tcp:")) {
+      const port = parseInt(socketPath.slice(4), 10);
+      this.#conn = await Deno.connect({
+        transport: "tcp",
+        hostname: "127.0.0.1",
+        port,
+      });
+    } else {
+      this.#conn = await Deno.connect({
+        transport: "unix",
+        path: socketPath,
+      });
+    }
 
     const stream = this.#conn.readable.pipeThrough(new TextDecoderStream());
     this.#reader = stream.getReader();

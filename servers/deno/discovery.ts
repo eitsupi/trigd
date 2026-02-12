@@ -25,9 +25,14 @@ async function atomicWrite(path: string, data: Uint8Array): Promise<void> {
 
 /**
  * Determine where to write discovery files.
- * Writes to $TMPDIR and also /tmp if different (matching transport.c search paths).
+ * On POSIX: writes to $TMPDIR and also /tmp if different (matching transport.c search paths).
+ * On Windows: writes to the system temp directory (TEMP/TMP).
  */
 function discoveryLocations(): string[] {
+  if (Deno.build.os === "windows") {
+    const tmpdir = Deno.env.get("TEMP") || Deno.env.get("TMP") || "C:\\Temp";
+    return [join(tmpdir, DISCOVERY_FILENAME)];
+  }
   const tmpdir = Deno.env.get("TMPDIR") || "/tmp";
   const locations = [join(tmpdir, DISCOVERY_FILENAME)];
   if (tmpdir !== "/tmp") {
