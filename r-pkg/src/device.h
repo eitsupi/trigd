@@ -20,6 +20,7 @@ typedef struct {
     int replaying;            /* guard against re-entry from GEplayDisplayList */
     double pending_w;         /* pending resize width in pixels, 0 = none */
     double pending_h;         /* pending resize height in pixels */
+    void *ge_dev;             /* pGEDevDesc — stable for device lifetime */
 #ifdef _WIN32
     void *hwnd;               /* HWND for message-only window (resize polling) */
     int timer_active;

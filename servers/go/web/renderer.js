@@ -75,7 +75,7 @@ async function replay(canvas, container, plot) {
         await renderOp(ctx, ops[i], plotH);
         // Abort if a newer render has started (prevents overlap from
         // async raster image decoding interleaving with a new render).
-        if (_renderGen !== gen) return;
+        if (_renderGen !== gen) { ctx.restore(); return; }
     }
 
     ctx.restore();

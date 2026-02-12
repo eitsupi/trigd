@@ -124,6 +124,7 @@ SEXP C_trigd(SEXP s_width, SEXP s_height, SEXP s_dpi) {
     pGEDevDesc gdd = GEcreateDevDesc(dd);
     GEaddDevice2(gdd, "trigd");
     GEinitDisplayList(gdd);
+    st->ge_dev = gdd;
 
     trigd_register_input_handler(st);
 
@@ -205,17 +206,8 @@ static void trigd_input_handler_cb(void *data) {
        the device is closed and cb_close removes it. */
     if (!st->transport.connected) return;
 
-    /* Find the GE device that owns this state */
-    pGEDevDesc gdd = NULL;
-    int ndev = NumDevices();
-    for (int i = 1; i <= ndev; i++) {
-        pGEDevDesc d = GEgetDevice(i);
-        if (d && d->dev && d->dev->deviceSpecific == st) {
-            gdd = d;
-            break;
-        }
-    }
-    if (!gdd) return;
+    pGEDevDesc gdd = (pGEDevDesc)st->ge_dev;
+    if (!gdd || !gdd->dev) return;
 
     poll_resize_impl(st, gdd->dev, gdd);
 }
@@ -252,16 +244,8 @@ static LRESULT CALLBACK trigd_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         trigd_state_t *st = (trigd_state_t *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
         if (!st || st->replaying || !st->transport.connected) return 0;
 
-        pGEDevDesc gdd = NULL;
-        int ndev = NumDevices();
-        for (int i = 1; i <= ndev; i++) {
-            pGEDevDesc d = GEgetDevice(i);
-            if (d && d->dev && d->dev->deviceSpecific == st) {
-                gdd = d;
-                break;
-            }
-        }
-        if (!gdd) return 0;
+        pGEDevDesc gdd = (pGEDevDesc)st->ge_dev;
+        if (!gdd || !gdd->dev) return 0;
 
         poll_resize_impl(st, gdd->dev, gdd);
         return 0;
@@ -278,7 +262,11 @@ void trigd_register_input_handler(trigd_state_t *st) {
         wc.lpfnWndProc = trigd_wndproc;
         wc.hInstance = NULL;
         wc.lpszClassName = TRIGD_WND_CLASS;
-        if (!RegisterClassExA(&wc)) return;
+        if (!RegisterClassExA(&wc)) {
+            /* After devtools::load_all() the class persists from the
+               previous DLL — treat that as success. */
+            if (GetLastError() != ERROR_CLASS_ALREADY_EXISTS) return;
+        }
         trigd_wnd_class_registered = 1;
     }
 
