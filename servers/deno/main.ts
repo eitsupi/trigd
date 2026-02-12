@@ -108,40 +108,46 @@ async function main(): Promise<void> {
   // find the socket immediately after parsing the readiness message.
   const discoveryPaths = await writeDiscovery(socketPath, httpPort);
 
+  // Install signal listener BEFORE announcing readiness so that
+  // SIGTERM sent immediately after "ready" is handled gracefully.
+  const sigPromise = isWindows
+    ? waitForSignal("SIGINT")
+    : waitForSignal("SIGINT", "SIGTERM");
+
   // Print readiness message to stdout (parsed by test infrastructure)
   console.log("trigd server ready");
   console.log(`  R socket:  ${socketPath}`);
   console.log(`  HTTP:      http://127.0.0.1:${httpPort}/`);
 
-  // Wait for shutdown signal (Windows only supports SIGINT)
-  const sig = isWindows
-    ? await waitForSignal("SIGINT")
-    : await waitForSignal("SIGINT", "SIGTERM");
+  // Wait for shutdown signal
+  const sig = await sigPromise;
 
   console.error(`received signal ${sig}, shutting down...`);
 
-  // 1. Close R listener (stop accepting new connections)
+  // 1. Remove discovery file immediately so new clients stop discovering us
+  await removeDiscovery(discoveryPaths);
+
+  // 2. Close R listener (stop accepting new connections)
   rListener.close();
 
-  // 2. Shutdown HTTP server
-  await httpServer.shutdown();
-
-  // 3. Close hub (close all connections)
-  hub.close();
-
-  // 4. Wait for active connections with timeout
-  await Promise.race([
-    Promise.allSettled(activeConnections),
-    new Promise((r) => setTimeout(r, 5000)),
-  ]);
-
-  // 5. Cleanup discovery and socket files
-  await removeDiscovery(discoveryPaths);
+  // 3. Cleanup socket file (listener already closed)
   if (!useTcp) {
     try {
       await Deno.remove(socketPath);
     } catch { /* ignore */ }
   }
+
+  // 4. Shutdown HTTP server
+  await httpServer.shutdown();
+
+  // 5. Close hub (close all connections)
+  hub.close();
+
+  // 6. Wait for active connections with timeout
+  await Promise.race([
+    Promise.allSettled(activeConnections),
+    new Promise((r) => setTimeout(r, 5000)),
+  ]);
 
   console.error("shutdown complete");
 }

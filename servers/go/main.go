@@ -95,19 +95,27 @@ func main() {
 	}
 
 	// Graceful shutdown sequence
-	// 1. Close R listener (stop accepting new R connections)
+	// 1. Remove discovery file immediately so new clients stop discovering us
+	removeDiscovery(discoveryPaths)
+
+	// 2. Close R listener (stop accepting new R connections)
 	rListener.Close()
 	close(done)
 
-	// 2. Shutdown HTTP server
+	// 3. Cleanup socket file (listener already closed)
+	if runtime.GOOS != "windows" && resolvedSocket != "" {
+		os.Remove(resolvedSocket)
+	}
+
+	// 4. Shutdown HTTP server
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 	httpServer.Shutdown(shutdownCtx)
 
-	// 3. Close hub (close all connections)
+	// 5. Close hub (close all connections)
 	hub.Close()
 
-	// 4. Wait for goroutines with timeout
+	// 6. Wait for goroutines with timeout
 	waitCh := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -117,12 +125,6 @@ func main() {
 	case <-waitCh:
 	case <-time.After(5 * time.Second):
 		log.Printf("shutdown timeout, forcing exit")
-	}
-
-	// 5. Cleanup discovery file and socket
-	removeDiscovery(discoveryPaths)
-	if runtime.GOOS != "windows" && resolvedSocket != "" {
-		os.Remove(resolvedSocket)
 	}
 
 	log.Printf("shutdown complete")

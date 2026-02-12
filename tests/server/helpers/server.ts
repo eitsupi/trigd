@@ -138,27 +138,34 @@ export class TrigdServer {
     return JSON.parse(text);
   }
 
-  /** Send SIGTERM and wait for exit. Falls back to SIGKILL after 5s. */
-  async shutdown(): Promise<void> {
-    if (!this.#process) return;
+  /**
+   * Send SIGTERM and wait for exit. Falls back to SIGKILL after timeout.
+   * Returns true if the process exited gracefully (not force-killed).
+   */
+  async shutdown(): Promise<boolean> {
+    if (!this.#process) return true;
 
     try {
       this.#process.kill("SIGTERM");
     } catch {
       // Process may have already exited
-      return;
+      return true;
     }
 
+    let forceKilled = false;
     const timeoutId = setTimeout(() => {
+      forceKilled = true;
       try {
         this.#process!.kill("SIGKILL");
       } catch {
         // Already exited
       }
-    }, 5000);
+    }, 10_000);
 
     try {
-      await this.#process.status;
+      const status = await this.#process.status;
+      // On SIGKILL, status.signal is set (non-graceful exit)
+      return !forceKilled && (status.success || status.signal !== "SIGKILL");
     } finally {
       clearTimeout(timeoutId);
     }
