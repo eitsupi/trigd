@@ -39,7 +39,7 @@ async function main(): Promise<void> {
 
   const isWindows = Deno.build.os === "windows";
   const tcpRequested = args.tcp !== "";
-  const tcpPort = tcpRequested ? (parseInt(args.tcp) || 0) : 0;
+  const tcpPort = tcpRequested ? (parseInt(args.tcp, 10) || 0) : 0;
   const useTcp = isWindows || tcpRequested;
 
   let socketPath: string;

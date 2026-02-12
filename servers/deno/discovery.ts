@@ -30,7 +30,7 @@ async function atomicWrite(path: string, data: Uint8Array): Promise<void> {
  */
 function discoveryLocations(): string[] {
   if (Deno.build.os === "windows") {
-    const tmpdir = Deno.env.get("TEMP") || Deno.env.get("TMP") || "C:\\Temp";
+    const tmpdir = Deno.env.get("TEMP") || Deno.env.get("TMP") || "C:\\Windows\\Temp";
     return [join(tmpdir, DISCOVERY_FILENAME)];
   }
   const tmpdir = Deno.env.get("TMPDIR") || "/tmp";
