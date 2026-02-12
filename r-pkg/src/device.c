@@ -181,7 +181,17 @@ static int poll_resize_impl(trigd_state_t *st, pDevDesc dd, pGEDevDesc gdd) {
 
     /* Send the complete replayed frame as a single flush.  The server will
      * tag this frame with resize:true so the browser does replaceLatest
-     * instead of addPlot. */
+     * instead of addPlot.
+     *
+     * When the display list is empty (no plots drawn yet), GEplayDisplayList
+     * is a no-op: cb_newPage never fires, so the page is NOT re-initialized
+     * and op_count == last_flushed_ops.  We intentionally skip the flush in
+     * that case — sending the stale page would emit incorrect old data.
+     * The server's resizePending flag stays armed and will tag the next real
+     * frame.  This is safe: replaceLatest on an empty browser session falls
+     * through to addPlot, and on a non-empty session the plot that consumed
+     * the flag would have been the first draw after an empty display list,
+     * which correctly replaces the "latest" blank state. */
     if (st->page.op_count > st->last_flushed_ops) {
         trigd_flush_frame(st, 0);
         st->last_flushed_ops = st->page.op_count;
