@@ -23,6 +23,11 @@ static void flush_frame(trigd_state_t *st, int incremental) {
     transport_send(&st->transport, jw_result(&st->frame_buf), jw_length(&st->frame_buf));
 }
 
+/* Public wrapper for device.c resize flush */
+void trigd_flush_frame(trigd_state_t *st, int incremental) {
+    flush_frame(st, incremental);
+}
+
 /* --- Device callbacks --- */
 
 static void cb_activate(const pDevDesc dd) { (void)dd; }
@@ -403,11 +408,17 @@ static void cb_mode(int mode, pDevDesc dd) {
         st->drawing = 1;
     } else if (mode == 0) {
         st->drawing = 0;
-        /* Only flush when display is not held.  High-level plot functions
-         * (plot, hist, …) bracket drawing with dev.hold/dev.flush, so
-         * cb_holdflush handles the single flush at the end.  Without hold
-         * (e.g. interactive lines()/points()), we flush immediately. */
-        if (st->hold_level == 0 && st->page.op_count > st->last_flushed_ops) {
+        /* Only flush when display is not held and not replaying.
+         * High-level plot functions (plot, hist, …) bracket drawing with
+         * dev.hold/dev.flush, so cb_holdflush handles the single flush at
+         * the end.  Without hold (e.g. interactive lines()/points()), we
+         * flush immediately.
+         *
+         * During display list replay (resize), we suppress ALL intermediate
+         * flushes so that only a single complete frame is sent after replay
+         * finishes.  This prevents untagged incremental frames from being
+         * misrouted by the browser (appendOps to the wrong history slot). */
+        if (st->hold_level == 0 && !st->replaying && st->page.op_count > st->last_flushed_ops) {
             /* First flush on a new page must be a complete frame so the
              * browser creates a new plot entry (addPlot) rather than
              * appending to the previous plot. */
@@ -425,8 +436,10 @@ static int cb_holdflush(pDevDesc dd, int level) {
     int new_level = old + level;
     if (new_level < 0) new_level = 0;
     st->hold_level = new_level;
-    /* When transitioning from held to unheld, send accumulated frame. */
-    if (old > 0 && new_level == 0) {
+    /* When transitioning from held to unheld, send accumulated frame.
+     * During display list replay (resize), suppress flush so that only a
+     * single complete frame is emitted after replay finishes. */
+    if (old > 0 && new_level == 0 && !st->replaying) {
         if (st->page.op_count > st->last_flushed_ops) {
             flush_frame(st, 0);
             st->last_flushed_ops = st->page.op_count;

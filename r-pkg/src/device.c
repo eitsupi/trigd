@@ -170,10 +170,22 @@ static int poll_resize_impl(trigd_state_t *st, pDevDesc dd, pGEDevDesc gdd) {
     st->pending_w = 0;
     st->pending_h = 0;
 
-    /* Replay the display list at new dimensions */
+    /* Replay the display list at new dimensions.
+     * All intermediate flushes (cb_holdflush, cb_mode) are suppressed while
+     * replaying=1 so that we emit exactly one complete frame afterwards.
+     * This prevents the browser from receiving untagged incremental frames
+     * that would be misrouted (appendOps to the wrong history slot). */
     st->replaying = 1;
     GEplayDisplayList(gdd);
     st->replaying = 0;
+
+    /* Send the complete replayed frame as a single flush.  The server will
+     * tag this frame with resize:true so the browser does replaceLatest
+     * instead of addPlot. */
+    if (st->page.op_count > st->last_flushed_ops) {
+        trigd_flush_frame(st, 0);
+        st->last_flushed_ops = st->page.op_count;
+    }
 
     return 1;
 }

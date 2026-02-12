@@ -34,4 +34,10 @@ typedef struct {
 void trigd_register_input_handler(trigd_state_t *st);
 void trigd_remove_input_handler(trigd_state_t *st);
 
+/* Serialize and send the current page as a frame message.
+ * incremental=0 sends all ops (complete frame), incremental=1 sends only
+ * ops added since the last flush (delta frame).
+ * Defined in callbacks.c but declared here for use by device.c resize. */
+void trigd_flush_frame(trigd_state_t *st, int incremental);
+
 #endif

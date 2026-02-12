@@ -94,6 +94,60 @@ Deno.test("E2E: resize after history navigation must not show ghost image", asyn
       assertEquals(colors.hasGreen, false, "canvas must not show resize frame (green)");
     });
 
+    await t.step("multi-frame resize replay must not corrupt historical plot", async () => {
+      // Simulates R's GEplayDisplayList sending multiple frames during resize:
+      // 1. A complete frame from dev.hold/dev.flush (tagged resize:true by server)
+      // 2. An incremental frame from cb_mode(0) for annotations outside hold scope
+      //    (e.g. abline, lines, title) — NOT tagged resize:true.
+      //
+      // Bug: the incremental frame hits appendOps(plots[currentIndex]), which
+      // corrupts the historical plot when currentIndex != latest.
+
+      // Ensure we're on plot 1
+      const infoPre = await page.evaluate(
+        `document.getElementById('plot-info').textContent`,
+      ) as string;
+      if (infoPre !== "1 / 2") {
+        await page.evaluate(`document.getElementById('btn-prev').click()`);
+        await delay(300);
+      }
+
+      // Send resize
+      resizeSender.sendResize(850, 650);
+      const msg = await readOfType<ResizeMessage>(
+        rClient, "resize", (m) => m.width === 850,
+      );
+      assertEquals(msg.width, 850);
+
+      // Frame 1: complete frame (will be tagged resize:true → replaceLatest)
+      await rClient.sendFrame({
+        ops: [{ op: "rect", x0: 0, y0: 0, x1: 850, y1: 650, gc: { fill: "#00ff00" } }],
+        device: { width: 850, height: 650, bg: "#00ff00" },
+      });
+
+      // Frame 2: incremental frame — simulates annotation replay (abline etc.)
+      // This frame is NOT tagged resize:true by the server, so it goes through
+      // the incremental path in handleFrame → appendOps.
+      await rClient.sendFrame(
+        {
+          ops: [{ op: "line", x1: 0, y1: 325, x2: 850, y2: 325, gc: { col: "#00ff00" } }],
+          device: { width: 850, height: 650, bg: "#00ff00" },
+        },
+        true,  // incremental = true
+      );
+      await delay(500);
+
+      // Historical plot 1 must not be corrupted by the incremental frame
+      const info = await page.evaluate(
+        `document.getElementById('plot-info').textContent`,
+      ) as string;
+      assertEquals(info, "1 / 2", "toolbar should stay at plot 1");
+
+      const colors = await sampleCanvasColors(page);
+      assertEquals(colors.hasRed, true, "canvas should show plot 1 (red)");
+      assertEquals(colors.hasGreen, false, "incremental resize frame must not leak into historical plot");
+    });
+
     await t.step("real ResizeObserver resize — no ghost/overlap", async () => {
       // Navigate back to plot 1 (might already be there)
       const infoPre = await page.evaluate(

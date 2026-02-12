@@ -40,12 +40,15 @@
         if (!session || session.plots.length === 0) {
             return this.addPlot(sessionId, plot);
         }
-        var current = session.plots[session.currentIndex];
+        // Always append to the latest plot, not the currently viewed one.
+        // Incremental frames are always for the most recent drawing/replay,
+        // even if the user has navigated to a historical plot.
+        var latest = session.plots[session.plots.length - 1];
         var newOps = plot.ops || [];
         for (var i = 0; i < newOps.length; i++) {
-            current.ops.push(newOps[i]);
+            latest.ops.push(newOps[i]);
         }
-        current.device = plot.device;
+        latest.device = plot.device;
         this._activeSessionId = sessionId;
     };
 
