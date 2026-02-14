@@ -95,7 +95,7 @@ static int discover_socket_path(char *out, size_t outsize, int skip_env) {
     for (int t = 0; t < n_tmpdirs; t++) {
         if (!tmpdirs[t] || !tmpdirs[t][0]) continue;
         char discovery[1024];
-        snprintf(discovery, sizeof(discovery), "%s/trigd-discovery.json", tmpdirs[t]);
+        snprintf(discovery, sizeof(discovery), "%s/jgd-discovery.json", tmpdirs[t]);
 
         FILE *f = fopen(discovery, "r");
         if (!f) continue;

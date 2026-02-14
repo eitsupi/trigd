@@ -1,6 +1,6 @@
 import { join, dirname } from "jsr:@std/path@1";
 
-const DISCOVERY_FILENAME = "trigd-discovery.json";
+const DISCOVERY_FILENAME = "jgd-discovery.json";
 
 interface DiscoveryInfo {
   socketPath: string;
@@ -11,7 +11,7 @@ interface DiscoveryInfo {
 /** Atomic file write via temp file + rename. */
 async function atomicWrite(path: string, data: Uint8Array): Promise<void> {
   const dir = dirname(path);
-  const tmpPath = join(dir, `.trigd-discovery-${crypto.randomUUID()}.tmp`);
+  const tmpPath = join(dir, `.jgd-discovery-${crypto.randomUUID()}.tmp`);
   try {
     await Deno.writeFile(tmpPath, data);
     await Deno.rename(tmpPath, path);

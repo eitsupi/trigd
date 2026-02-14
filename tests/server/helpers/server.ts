@@ -133,7 +133,7 @@ export class TrigdServer {
 
   /** Read the discovery file written by the server. */
   async readDiscovery(): Promise<DiscoveryFile> {
-    const path = join(this.tmpDir, "trigd-discovery.json");
+    const path = join(this.tmpDir, "jgd-discovery.json");
     const text = await Deno.readTextFile(path);
     return JSON.parse(text);
   }

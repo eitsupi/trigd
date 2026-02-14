@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-const discoveryFileName = "trigd-discovery.json"
+const discoveryFileName = "jgd-discovery.json"
 
 // writeDiscovery atomically writes the discovery file so R can find the server.
 // It writes to $TMPDIR and also to /tmp if different (matching transport.c search paths).
@@ -66,7 +66,7 @@ func discoveryLocations() []string {
 // atomicWrite writes data to a file atomically via temp file + rename.
 func atomicWrite(path string, data []byte) error {
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".trigd-discovery-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".jgd-discovery-*.tmp")
 	if err != nil {
 		return err
 	}

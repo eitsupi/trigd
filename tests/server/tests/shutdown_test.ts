@@ -46,7 +46,7 @@ Deno.test("graceful shutdown", async (t) => {
       }
 
       // Verify discovery file is cleaned up
-      const discPath = `${server.tmpDir}/trigd-discovery.json`;
+      const discPath = `${server.tmpDir}/jgd-discovery.json`;
       try {
         await Deno.readTextFile(discPath);
         assert(false, "Discovery file should be removed after shutdown");
