@@ -157,13 +157,17 @@ static int try_connect(trigd_transport_t *t) {
 
 #ifndef _WIN32
     /* Unix domain socket */
+    size_t pathlen = strlen(t->socket_path);
+    if (pathlen >= sizeof(((struct sockaddr_un *)0)->sun_path))
+        return -1;
+
     sock_t s = socket(AF_UNIX, SOCK_STREAM, 0);
     if (s == SOCK_INVALID) return -1;
 
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", t->socket_path);
+    memcpy(addr.sun_path, t->socket_path, pathlen + 1);
 
     if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
         SOCK_CLOSE(s);
