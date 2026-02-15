@@ -221,7 +221,7 @@ SEXP C_trigd_poll_resize(void) {
 /* Callback invoked by R's event loop when data arrives on the transport fd. */
 static void trigd_input_handler_cb(void *data) {
     trigd_state_t *st = (trigd_state_t *)data;
-    if (!st || st->replaying) return;
+    if (!st || st->replaying || st->drawing) return;
 
     /* If transport disconnected (server died), just bail out.
        The handler stays registered but returns immediately until
@@ -264,7 +264,7 @@ static int trigd_wnd_class_registered = 0;
 static LRESULT CALLBACK trigd_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (msg == WM_TIMER && wp == TRIGD_TIMER_ID) {
         trigd_state_t *st = (trigd_state_t *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-        if (!st || st->replaying || !st->transport.connected) return 0;
+        if (!st || st->replaying || st->drawing || !st->transport.connected) return 0;
 
         pGEDevDesc gdd = (pGEDevDesc)st->ge_dev;
         if (!gdd || !gdd->dev) return 0;
